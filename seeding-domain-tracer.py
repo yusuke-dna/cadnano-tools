@@ -22,12 +22,13 @@ def write_report(filename: str, content: str):
     with open(filename, 'a') as f:
         f.write(content + '\n')
 
-def color_change(blueprint: dict): 
-    write_report('report.txt', '')  # Initialize report file with empty content
+def color_change(blueprint: dict, filename: str): 
+    with open(filename, 'w') as f:
+        f.write('') # Initialize report file with empty content
     for helix_id, helix in enumerate(blueprint['vstrands']):
         for strand_id, strand in enumerate(helix['stap_colors']):
             position = strand[0]
-            blueprint = trace_domain(blueprint, helix_id, position, strand_id, 'report.txt')
+            blueprint = trace_domain(blueprint, helix_id, position, strand_id, filename)
     write_json_file('output.json', blueprint)
                 
 def trace_domain(blueprint: dict, helix_num: int, pos_num: int, strand_id: int, report_path: str) -> dict:
@@ -45,7 +46,7 @@ def trace_domain(blueprint: dict, helix_num: int, pos_num: int, strand_id: int, 
     else:
         domain_string = 'a'
 
-    while blueprint['vstrands'][tracer_hel]['stap'][tracer_pos][2] != -1 and domain_num < 26:
+    while blueprint['vstrands'][tracer_hel]['stap'][tracer_pos][2] != -1:
         if blueprint['vstrands'][tracer_hel]['scaf'][tracer_pos][0] == -1:
             count = 0
             domain_string += 'S' # ssDNA region
@@ -70,15 +71,14 @@ def trace_domain(blueprint: dict, helix_num: int, pos_num: int, strand_id: int, 
     elif max_count > 11:
         blueprint['vstrands'][helix_num]['stap_colors'][strand_id][1] = 65535 # Acceptable strand is painted cyan.
     else:
-        blueprint['vstrands'][helix_num]['stap_colors'][strand_id][1] = 16711680            
-    with open(report_path, 'a') as f:
-        f.write(domain_string + '\n')
+        blueprint['vstrands'][helix_num]['stap_colors'][strand_id][1] = 16711680 # Rest bad strands are painted red
+    write_report(report_path, domain_string)
     if len(domain_string) > 80:
         blueprint['vstrands'][helix_num]['stap_colors'][strand_id][1] = 16711935  # Magenta when the sequence is too long.
     return blueprint
 
-if __name__ == "__main__":
-    args = get_args()
-    blueprint = load_json_file(args.input_file)
-    if blueprint:
-        color_change(blueprint)
+args = get_args()
+blueprint = load_json_file(args.input_file)
+if blueprint:
+    color_change(blueprint,'report.txt')
+
