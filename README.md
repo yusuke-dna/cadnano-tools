@@ -11,7 +11,7 @@ The Seeding Domain Tracer is a Python script that assists users in the manual op
 - **Staples with > 11 nt continuous hybridization to the scaffold:** These are colored cyan.
 - **Staples without seeding domains:** These are colored red.
 
-### Usage
+### How to Use
 
 To use the Seeding Domain Tracer, navigate to the directory containing the script and run the following command:
 ```
