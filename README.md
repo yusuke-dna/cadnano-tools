@@ -27,6 +27,6 @@ Ke, Y., G. Bellot, N. V. Voigt, E. Fradkov, and W. M. Shih. 'Two Design Strategi
 
 ## Simple Multiplier
 
-The Simple Multiplier is a script that automates the process of copying and pasting repetitive DNA origami designs from a unique unit. This can significantly reduce the time required to create complex structures.
+The `Simple Multiplier` is a script that automates the process of copying and pasting repetitive DNA origami designs from a unique unit. This can significantly reduce the time required to create symmetric structures.
 
-Documentation for this tool is currently under development and will be available soon.
+Documentation for this tool is currently under development and will be available in future.
