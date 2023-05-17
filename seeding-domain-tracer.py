@@ -54,7 +54,7 @@ def trace_domain(blueprint: dict, helix_num: int, pos_num: int, strand_id: int, 
             new_tracer_pos = blueprint['vstrands'][tracer_hel]['stap'][tracer_pos][3]
             tracer_hel = new_tracer_hel
             tracer_pos = new_tracer_pos
-        elif blueprint['vstrands'][tracer_hel]['stap'][tracer_pos][2] == tracer_hel: # if domain continues
+        elif blueprint['vstrands'][tracer_hel]['stap'][tracer_pos][2] == tracer_hel and blueprint['vstrands'][tracer_hel]['scaf'][tracer_pos][0] == tracer_hel: # if domain continues
             count += 1
             max_count = max(count,max_count)
             domain_string += alphabet[domain_num]
@@ -66,9 +66,9 @@ def trace_domain(blueprint: dict, helix_num: int, pos_num: int, strand_id: int, 
             tracer_pos = blueprint['vstrands'][tracer_hel]['stap'][tracer_pos][3]
             tracer_hel = blueprint['vstrands'][tracer_hel]['stap'][tracer_pos][2]        
     end = str(tracer_hel) + '[' + str(tracer_pos) + '],'
-    if max_count > 13:
+    if max_count >= 13:
         blueprint['vstrands'][helix_num]['stap_colors'][strand_id][1] = 255 # OK strand is painted blue.
-    elif max_count > 11:
+    elif max_count >= 11:
         blueprint['vstrands'][helix_num]['stap_colors'][strand_id][1] = 65535 # Acceptable strand is painted cyan.
     else:
         blueprint['vstrands'][helix_num]['stap_colors'][strand_id][1] = 16711680 # Rest bad strands are painted red
