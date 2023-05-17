@@ -24,7 +24,7 @@ def write_report(filename: str, content: str):
 
 def color_change(blueprint: dict, filename: str): 
     with open(filename, 'w') as f:
-        f.write('') # Initialize report file with empty content
+        f.write('start,end,domains\n') # Initialize report file with empty content
     for helix_id, helix in enumerate(blueprint['vstrands']):
         for strand_id, strand in enumerate(helix['stap_colors']):
             position = strand[0]
@@ -40,7 +40,7 @@ def trace_domain(blueprint: dict, helix_num: int, pos_num: int, strand_id: int, 
     domain_num = 0
     count = 0
     max_count = 0
-
+    start = str(tracer_hel) + '[' + str(tracer_pos) + '],'
     if blueprint['vstrands'][tracer_hel]['scaf'][tracer_pos][0] == -1:
         domain_string = 'S'
     else:
@@ -65,14 +65,14 @@ def trace_domain(blueprint: dict, helix_num: int, pos_num: int, strand_id: int, 
             domain_string += alphabet[domain_num]
             tracer_pos = blueprint['vstrands'][tracer_hel]['stap'][tracer_pos][3]
             tracer_hel = blueprint['vstrands'][tracer_hel]['stap'][tracer_pos][2]        
-
+    end = str(tracer_hel) + '[' + str(tracer_pos) + '],'
     if max_count > 13:
         blueprint['vstrands'][helix_num]['stap_colors'][strand_id][1] = 255 # OK strand is painted blue.
     elif max_count > 11:
         blueprint['vstrands'][helix_num]['stap_colors'][strand_id][1] = 65535 # Acceptable strand is painted cyan.
     else:
         blueprint['vstrands'][helix_num]['stap_colors'][strand_id][1] = 16711680 # Rest bad strands are painted red
-    write_report(report_path, domain_string)
+    write_report(report_path, start + end + domain_string)
     if len(domain_string) > 80:
         blueprint['vstrands'][helix_num]['stap_colors'][strand_id][1] = 16711935  # Magenta when the sequence is too long.
     return blueprint
@@ -81,4 +81,3 @@ args = get_args()
 blueprint = load_json_file(args.input_file)
 if blueprint:
     color_change(blueprint,'report.txt')
-
