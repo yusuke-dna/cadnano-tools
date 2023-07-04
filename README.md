@@ -34,11 +34,12 @@ Documentation for this tool is currently under development and will be available
 <img width="2168" alt="image" src="https://github.com/yusuke-dna/cadnano-tools/assets/70700401/7f21252f-01ad-46cc-aaa6-d876436b8000">
 2. Add blank helices to be copied in. The arrangement of the unit is recommended to be regular (periodical) and separated to each other for make simulations easy. The unit should be start from odd number and finish with even number. Keep in mind the `Unit` is interpreted as a continuous helices from helix #0 to the largest # bearing scaffold. The unit is copied and pasted to blank helices.
 <img width="2168" alt="image" src="https://github.com/yusuke-dna/cadnano-tools/assets/70700401/5ad050ff-8875-4997-bfbf-ee84a7eb9053">
-3. Save the file, run the script as below and you'll get the multiplied design as `output.json`.  
-Navigate to the directory containing the script and run the following command: 
-``` 
-$ python3 simple-multiplier.py file/path/to/json/file.json
-``` 
+3. Save the file, run the script as below and you'll get the multiplied design as `output.json`.
+  
+Navigate to the directory containing the script and run the following command:   
+```   
+$ python3 simple-multiplier.py file/path/to/json/file.json  
+```   
 <img width="2168" alt="image" src="https://github.com/yusuke-dna/cadnano-tools/assets/70700401/a5a6d52b-7c3d-40c1-88c3-a57831821743">
 
 
