@@ -30,3 +30,15 @@ Ke, Y., G. Bellot, N. V. Voigt, E. Fradkov, and W. M. Shih. 'Two Design Strategi
 The `Simple Multiplier` is a script that automates the process of copying and pasting repetitive DNA origami designs from a unique unit. This can significantly reduce the time required to create symmetric structures.
 
 Documentation for this tool is currently under development and will be available in future.
+1. Draw design of basic unit desired to be multiplied. Ensure the first helix # is 0 and the last helix # is odd number. The last helix should have scaffold to indicate it is the last helix of the unit.
+<img width="2168" alt="image" src="https://github.com/yusuke-dna/cadnano-tools/assets/70700401/7f21252f-01ad-46cc-aaa6-d876436b8000">
+2. Add blank helices to be copied in. The arrangement of the unit is recommended to be regular (periodical) and separated to each other for make simulations easy. The unit should be start from odd number and finish with even number. Keep in mind the `Unit` is interpreted as a continuous helices from helix #0 to the largest # bearing scaffold. The unit is copied and pasted to blank helices.
+<img width="2168" alt="image" src="https://github.com/yusuke-dna/cadnano-tools/assets/70700401/5ad050ff-8875-4997-bfbf-ee84a7eb9053">
+3. Run the script as below and you'll get multiplied design as output.json.
+Navigate to the directory containing the script and run the following command:
+```
+$ python3 simple-multiplier.py file/path/to/json/file.json
+```
+<img width="2168" alt="image" src="https://github.com/yusuke-dna/cadnano-tools/assets/70700401/23ffe713-d34e-41f8-815d-42ad88d68ad4">
+
+
