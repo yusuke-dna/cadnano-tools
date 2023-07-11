@@ -19,12 +19,6 @@ $ python3 seeding-domain-tracer.py file/path/to/json/file.json
 ```
 The script will generate two output files: `output.json` and `report.txt`. The `output.json` file is compatible with cadnano2, while `report.txt` lists the staples to display domain properties. In this list, the first column shows the location of 5' end of the strand, in the same way as staple export file of cadnano2. In the second column, domain structure is printed in following way: `a-z` represents continuous base pairings with incremental domain naming; `S` indicates a base not hybridized to the scaffold; and `E` is an error catcher for situations such as the presence of more than 26 domains in single staple.
 
-### References
-
-The Seeding Domain Tracer script is based on the following research:
-
-Ke, Y., G. Bellot, N. V. Voigt, E. Fradkov, and W. M. Shih. 'Two Design Strategies for Enhancement of Multilayer-DNA-Origami Folding: Underwinding for Specific Intercalator Rescue and Staple-Break Positioning'. Chem Sci 3, no. 8 (1 August 2012): 2587–97. [https://doi.org/10.1039/C2SC20446K](https://doi.org/10.1039/C2SC20446K).
-
 ## Simple Multiplier
 
 The `Simple Multiplier` is a script that automates the process of copying and pasting repetitive DNA origami designs from a unique unit. This can significantly reduce the time required to create symmetric structures.
@@ -44,4 +38,13 @@ $ python3 simple-multiplier.py file/path/to/json/file.json
   
 <img width="2168" alt="image" src="https://github.com/yusuke-dna/cadnano-tools/assets/70700401/a5a6d52b-7c3d-40c1-88c3-a57831821743">
 
+---
+### References
+Cadnano2 is developped by Douglas group:
 
+Douglas et al. 'Rapid prototyping of 3D DNA-origami shapes with caDNAno' Nucleic Acids Res: 37(15):5001–6 (2009) https://doi.org/10.1093/nar/gkp436
+https://github.com/douglaslab/cadnano2
+
+The Seeding Domain Tracer script is based on the following research:
+
+Ke, Y., G. Bellot, N. V. Voigt, E. Fradkov, and W. M. Shih. 'Two Design Strategies for Enhancement of Multilayer-DNA-Origami Folding: Underwinding for Specific Intercalator Rescue and Staple-Break Positioning'. Chem Sci 3, no. 8 (1 August 2012): 2587–97. [https://doi.org/10.1039/C2SC20446K](https://doi.org/10.1039/C2SC20446K).
