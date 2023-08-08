@@ -17,7 +17,7 @@ To use the Seeding Domain Tracer, navigate to the directory containing the scrip
 ```
 $ python3 seeding-domain-tracer.py file/path/to/json/file.json
 ```
-The script will generate two output files: `output.json` and `report.txt`. The `output.json` file is compatible with cadnano2, while `report.txt` lists the staples to display domain properties. In this list, the first column shows the location of 5' end of the strand, in the same way as staple export file of cadnano2. In the second column, domain structure is printed in following way: `a-z` represents continuous base pairings with incremental domain naming; `S` indicates a base not hybridized to the scaffold; and `E` is an error catcher for situations such as the presence of more than 26 domains in single staple  (neither good assembly nor affotable synthesis is expected).
+The script will generate two output files: `output.json` and `report.txt`. The `output.json` file is compatible with cadnano2, while `report.txt` lists the staples to display domain properties. In this list, the first column shows the location of 5' end of the strand, in the same way as staple export file of cadnano2. In the second column, domain structure is printed in following way: `a-z` represents continuous base pairings with incremental domain naming; `S` indicates a base not hybridized to the scaffold; and `E` is an error catcher for situations such as the presence of more than 26 domains in single staple (too long in practice).
 
 ## Simple Multiplier
 
