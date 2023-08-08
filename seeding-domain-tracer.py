@@ -66,7 +66,7 @@ def trace_domain(blueprint: dict, helix_num: int, pos_num: int, strand_id: int, 
             tracer_pos_break = tracer_pos
             tracer_pos = blueprint['vstrands'][tracer_hel]['stap'][tracer_pos][3]
             tracer_hel = blueprint['vstrands'][tracer_hel]['stap'][tracer_pos_break][2]        
-        end = str(tracer_hel) + '[' + str(tracer_pos) + '],'
+    end = str(tracer_hel) + '[' + str(tracer_pos) + '],'
     if max_count >= 13:
         blueprint['vstrands'][helix_num]['stap_colors'][strand_id][1] = 255 # OK strand is painted blue.
     elif max_count >= 11:
