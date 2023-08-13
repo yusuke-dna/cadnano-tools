@@ -1,6 +1,12 @@
-import json
-from collections import OrderedDict
-import sys
+try:
+    import json
+    from collections import OrderedDict
+    import sys
+except ImportError as e:
+    missing_module = str(e).split(" ")[-1].replace("'", "")
+    print(f"Error: The required module {missing_module} is not installed.")
+    print(f"Please install it by running 'pip install {missing_module}' and then run the script again.")
+    exit()
 
 def validation(dic_text):
     n_max = len(dic_text['vstrands']) - 1              
