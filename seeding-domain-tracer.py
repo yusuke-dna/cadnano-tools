@@ -1,5 +1,11 @@
-import argparse
-import json
+try:
+    import argparse
+    import json
+except ImportError as e:
+    missing_module = str(e).split(" ")[-1].replace("'", "")
+    print(f"Error: The required module {missing_module} is not installed.")
+    print(f"Please install it by running 'pip install {missing_module}' and then run the script again.")
+    exit()
 
 def get_args():
     parser = argparse.ArgumentParser()
