@@ -23,6 +23,7 @@ The script will generate three output files: `output.json`, `crossover_report.cs
 - `crossover_report.csv` summarises crossover frequency of every adjacent helices pair, in accending order of central helix number. So e.g. 0-1 and 1-0 appears twice. From left to right, helix number, total count of crossover, crossover count by scaffold, crossover count by staple, filled length of focusing helix, count of short domain of invalid (not either blue nor cyan) strands.
 - `domain_report.csv` lists the staples to display domain properties. In this list, the first and the second column shows the location of 5' end and 3' end of the strand, in the same way as staple export file of cadnano2. In the third column, domain structure is printed in following way: `a-z` represents continuous base pairings with incremental domain naming; `S` indicates a base not hybridised to the scaffold; and `E` is an error catcher for situations such as the presence of more than 26 domains in single staple (too long in practice). Length at the last column for reference.
 ### Suggested Workflow for Staple Optimisation
+
 _Updated 2023-09-16_
 * SAVE intermediate file every step
 1. Run the script
