@@ -84,7 +84,37 @@ def trace_domain(blueprint: dict, helix_num: int, pos_num: int, strand_id: int, 
         blueprint['vstrands'][helix_num]['stap_colors'][strand_id][1] = 16711935  # Magenta when the sequence is too long.
     return blueprint
 
+def count_crossover(blueprint: dict, report_path: str):
+    with open(report_path, 'w') as f:
+        f.write('hel,total,scaf,stap,len\n') # Initialize report file with empty content
+    summary = ''
+    for i in range(len(blueprint['vstrands'])):
+        hel_dict = blueprint['vstrands'][i]
+        count_scaf = 0
+        count_stap = 0
+        count = 0
+        filled_len = len(hel_dict['scaf'])
+        summary = summary + str(hel_dict['num']) + ','
+        for j in range(len(hel_dict['scaf'])):
+            if hel_dict['scaf'][j][0] != i and hel_dict['scaf'][j][0] != -1 and hel_dict['stap'][j][0] != -1 and hel_dict['stap'][j][2] != -1:  # Latter two equation exclude external loop. If accept loose connection as crossover, remove them
+                count += 1
+                count_scaf += 1
+            elif hel_dict['scaf'][j][2] != i and hel_dict['scaf'][j][2] != -1 and hel_dict['stap'][j][0] != -1 and hel_dict['stap'][j][2] != -1:
+                count += 1
+                count_scaf += 1
+            elif hel_dict['stap'][j][0] != i and hel_dict['stap'][j][0] != -1 and hel_dict['scaf'][j][0] != -1 and hel_dict['scaf'][j][2] != -1:
+                count += 1
+                count_stap += 1
+            elif hel_dict['stap'][j][2] != i and hel_dict['stap'][j][2] != -1 and hel_dict['scaf'][j][0] != -1 and hel_dict['scaf'][j][2] != -1:
+                count += 1
+                count_stap += 1
+            elif hel_dict['scaf'][j][0] == -1 and hel_dict['scaf'][j][2] == -1 and hel_dict['stap'][j][0] == -1 and hel_dict['stap'][j][2] == -1:   # If both scaffold and staple are empty, it is subtracted from length of the helix
+                filled_len -= 1
+        summary = summary + f"{count},{count_scaf},{count_stap},{filled_len}\n"
+    write_report(report_path, summary)
+
 args = get_args()
 blueprint = load_json_file(args.input_file)
 if blueprint:
-    color_change(blueprint,'report.txt')
+    color_change(blueprint,'domain_report.csv')
+    count_crossover(blueprint, 'crossover_report.csv')
