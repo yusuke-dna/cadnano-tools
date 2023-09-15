@@ -40,27 +40,41 @@ def color_change(blueprint: dict, filename: str) -> list:
     write_json_file('output.json', blueprint)
     return short_domain_list
 
+def is_empty_helix(vstrands: list) -> bool:
+    empty = True
+    for i in range(len(vstrands['scaf'])):
+        if not (vstrands['scaf'][i][0] == -1 and vstrands['scaf'][i][1] == -1 and vstrands['scaf'][i][2] == -1 and vstrands['scaf'][i][3] == -1 and vstrands['stap'][i][0] == -1 and vstrands['stap'][i][1] == -1 and vstrands['stap'][i][2] == -1 and vstrands['stap'][i][3] == -1) :
+            empty = False
+    return empty
+
 def get_neighbour_helix(blueprint: dict, helix_id: int) -> list:
     # Get helix id of neighbours
     neighbour_list = []
-    # if neibour is triangle (row + col is odd)
-    if (blueprint['vstrands'][helix_id]['row'] + blueprint['vstrands'][helix_id]['col']) % 2 == 0:
-        for helix_num in range(len(blueprint['vstrands'])):
-            if blueprint['vstrands'][helix_num]['col'] == blueprint['vstrands'][helix_id]['col'] - 1 and blueprint['vstrands'][helix_num]['row'] == blueprint['vstrands'][helix_id]['row']:
-                neighbour_list.append(helix_num)
-            elif blueprint['vstrands'][helix_num]['col'] == blueprint['vstrands'][helix_id]['col'] + 1 and blueprint['vstrands'][helix_num]['row'] == blueprint['vstrands'][helix_id]['row']:
-                neighbour_list.append(helix_num)
-            elif blueprint['vstrands'][helix_num]['col'] == blueprint['vstrands'][helix_id]['col'] and blueprint['vstrands'][helix_num]['row'] == blueprint['vstrands'][helix_id]['row'] - 1:
-                neighbour_list.append(helix_num)
-    # if neibour is reverse triangle
-    else:
-        for helix_num in range(len(blueprint['vstrands'])):
-            if blueprint['vstrands'][helix_num]['col'] == blueprint['vstrands'][helix_id]['col'] - 1 and blueprint['vstrands'][helix_num]['row'] == blueprint['vstrands'][helix_id]['row']:
-                neighbour_list.append(helix_num)
-            elif blueprint['vstrands'][helix_num]['col'] == blueprint['vstrands'][helix_id]['col'] + 1 and blueprint['vstrands'][helix_num]['row'] == blueprint['vstrands'][helix_id]['row']:
-                neighbour_list.append(helix_num)
-            elif blueprint['vstrands'][helix_num]['col'] == blueprint['vstrands'][helix_id]['col'] and blueprint['vstrands'][helix_num]['row'] == blueprint['vstrands'][helix_id]['row'] + 1:
-                neighbour_list.append(helix_num)
+    if not is_empty_helix(blueprint['vstrands'][helix_id]):
+        # if neibour is triangle (row + col is odd)
+        if (blueprint['vstrands'][helix_id]['row'] + blueprint['vstrands'][helix_id]['col']) % 2 == 0:
+            for helix_num in range(len(blueprint['vstrands'])):
+                candidate = -1
+                if blueprint['vstrands'][helix_num]['col'] == blueprint['vstrands'][helix_id]['col'] - 1 and blueprint['vstrands'][helix_num]['row'] == blueprint['vstrands'][helix_id]['row']:
+                    candidate = helix_num
+                elif blueprint['vstrands'][helix_num]['col'] == blueprint['vstrands'][helix_id]['col'] + 1 and blueprint['vstrands'][helix_num]['row'] == blueprint['vstrands'][helix_id]['row']:
+                    candidate = helix_num
+                elif blueprint['vstrands'][helix_num]['col'] == blueprint['vstrands'][helix_id]['col'] and blueprint['vstrands'][helix_num]['row'] == blueprint['vstrands'][helix_id]['row'] - 1:
+                    candidate = helix_num
+                if candidate != -1: #not is_empty_helix(blueprint['vstrands'][candidate])
+                    neighbour_list.append(candidate)
+        # if neibour is reverse triangle
+        else:
+            for helix_num in range(len(blueprint['vstrands'])):
+                candidate = -1
+                if blueprint['vstrands'][helix_num]['col'] == blueprint['vstrands'][helix_id]['col'] - 1 and blueprint['vstrands'][helix_num]['row'] == blueprint['vstrands'][helix_id]['row']:
+                    candidate = helix_num
+                elif blueprint['vstrands'][helix_num]['col'] == blueprint['vstrands'][helix_id]['col'] + 1 and blueprint['vstrands'][helix_num]['row'] == blueprint['vstrands'][helix_id]['row']:
+                    candidate = helix_num
+                elif blueprint['vstrands'][helix_num]['col'] == blueprint['vstrands'][helix_id]['col'] and blueprint['vstrands'][helix_num]['row'] == blueprint['vstrands'][helix_id]['row'] + 1:
+                    candidate = helix_num
+                if candidate != -1:
+                    neighbour_list.append(candidate)
     return neighbour_list
 
 def count_short_domain(count_list,short_domain_list) -> list:
@@ -76,7 +90,7 @@ def trace_domain(blueprint: dict, helix_num: int, pos_num: int, strand_id: int, 
     last_tracer_pos = tracer_pos
     last_tracer_hel = tracer_hel
     length_max = 80    # configure as you like
-    length_min = 20    # configure as you like
+    length_min = 40    # configure as you like
     optimal_seed_len = 14
     acceptable_seeding_len = 12
     alphabet = [chr(i) for i in range(97,123)]
