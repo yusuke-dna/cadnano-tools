@@ -75,8 +75,10 @@ def trace_domain(blueprint: dict, helix_num: int, pos_num: int, strand_id: int, 
     tracer_hel = helix_num
     last_tracer_pos = tracer_pos
     last_tracer_hel = tracer_hel
-    length_max = 80
-    length_min = 20
+    length_max = 80    # configure as you like
+    length_min = 20    # configure as you like
+    optimal_seed_len = 14
+    acceptable_seeding_len = 12
     alphabet = [chr(i) for i in range(97,123)]
     alphabet.extend(['E'] * 100)
     domain_num = 0
@@ -126,10 +128,10 @@ def trace_domain(blueprint: dict, helix_num: int, pos_num: int, strand_id: int, 
         blueprint['vstrands'][helix_num]['stap_colors'][strand_id][1] = 16776960  # Yellow when the sequence is too short.
     elif total_len > length_max:
         blueprint['vstrands'][helix_num]['stap_colors'][strand_id][1] = 16711935  # Magenta when the sequence is too long.
-    elif max_count >= 13 :
+    elif max_count >= optimal_seed_len - 1 :
         blueprint['vstrands'][helix_num]['stap_colors'][strand_id][1] = 255 # optimal strand is painted blue.
         hel_history = []                                                    # short domains in optimal strand is not counted
-    elif max_count >= 11:
+    elif max_count >= acceptable_seeding_len - 1 :
         blueprint['vstrands'][helix_num]['stap_colors'][strand_id][1] = 65535 # Acceptable strand is painted cyan.
         hel_history = []                                                      # short domains in acceptable strand is not counted
     else:
