@@ -108,7 +108,7 @@ def count_crossover(blueprint: dict, report_path: str):
             elif hel_dict['stap'][j][2] != i and hel_dict['stap'][j][2] != -1 and hel_dict['scaf'][j][0] != -1 and hel_dict['scaf'][j][2] != -1:
                 count += 1
                 count_stap += 1
-            elif hel_dict['scaf'][j][0] == -1 and hel_dict['scaf'][j][2] == -1 and hel_dict['stap'][j][0] == -1 and hel_dict['stap'][j][2] == -1:   # If both scaffold and staple are empty, it is subtracted from length of the helix
+            if hel_dict['scaf'][j][0] == -1 and hel_dict['scaf'][j][2] == -1 and hel_dict['stap'][j][0] == -1 and hel_dict['stap'][j][2] == -1:   # If both scaffold and staple are empty, it is subtracted from length of the helix
                 filled_len -= 1
         summary = summary + f"{count},{count_scaf},{count_stap},{filled_len}\n"
     write_report(report_path, summary)
