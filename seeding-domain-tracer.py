@@ -28,93 +28,150 @@ def write_report(filename: str, content: str):
     with open(filename, 'a') as f:
         f.write(content + '\n')
 
-def color_change(blueprint: dict, filename: str): 
+def color_change(blueprint: dict, filename: str) -> list: 
+    short_domain_list = []
     with open(filename, 'w') as f:
-        f.write('start,end,domains\n') # Initialize report file with empty content
+        f.write('start,end,domains,length\n') # Initialize report file with empty content
     for helix_id, helix in enumerate(blueprint['vstrands']):
         for strand_id, strand in enumerate(helix['stap_colors']):
             position = strand[0]
-            blueprint = trace_domain(blueprint, helix_id, position, strand_id, filename)
+            blueprint, new_short_domains = trace_domain(blueprint, helix_id, position, strand_id, filename)
+            short_domain_list.extend(new_short_domains)
     write_json_file('output.json', blueprint)
-                
-def trace_domain(blueprint: dict, helix_num: int, pos_num: int, strand_id: int, report_path: str) -> dict:
+    return short_domain_list
+
+def get_neighbour_helix(blueprint: dict, helix_id: int) -> list:
+    # Get helix id of neighbours
+    neighbour_list = []
+    # if neibour is triangle (row + col is odd)
+    if (blueprint['vstrands'][helix_id]['row'] + blueprint['vstrands'][helix_id]['col']) % 2 == 0:
+        for helix_num in range(len(blueprint['vstrands'])):
+            if blueprint['vstrands'][helix_num]['col'] == blueprint['vstrands'][helix_id]['col'] - 1 and blueprint['vstrands'][helix_num]['row'] == blueprint['vstrands'][helix_id]['row']:
+                neighbour_list.append(helix_num)
+            elif blueprint['vstrands'][helix_num]['col'] == blueprint['vstrands'][helix_id]['col'] + 1 and blueprint['vstrands'][helix_num]['row'] == blueprint['vstrands'][helix_id]['row']:
+                neighbour_list.append(helix_num)
+            elif blueprint['vstrands'][helix_num]['col'] == blueprint['vstrands'][helix_id]['col'] and blueprint['vstrands'][helix_num]['row'] == blueprint['vstrands'][helix_id]['row'] - 1:
+                neighbour_list.append(helix_num)
+    # if neibour is reverse triangle
+    else:
+        for helix_num in range(len(blueprint['vstrands'])):
+            if blueprint['vstrands'][helix_num]['col'] == blueprint['vstrands'][helix_id]['col'] - 1 and blueprint['vstrands'][helix_num]['row'] == blueprint['vstrands'][helix_id]['row']:
+                neighbour_list.append(helix_num)
+            elif blueprint['vstrands'][helix_num]['col'] == blueprint['vstrands'][helix_id]['col'] + 1 and blueprint['vstrands'][helix_num]['row'] == blueprint['vstrands'][helix_id]['row']:
+                neighbour_list.append(helix_num)
+            elif blueprint['vstrands'][helix_num]['col'] == blueprint['vstrands'][helix_id]['col'] and blueprint['vstrands'][helix_num]['row'] == blueprint['vstrands'][helix_id]['row'] + 1:
+                neighbour_list.append(helix_num)
+    return neighbour_list
+
+def count_short_domain(count_list,short_domain_list) -> list:
+    # Count number of short domains in each helix
+    for helix_id in short_domain_list:
+        count_list[helix_id] += 1
+    return count_list
+
+def trace_domain(blueprint: dict, helix_num: int, pos_num: int, strand_id: int, report_path: str) -> tuple [dict, list]:
     # Change color of specific helices according to domain composition.
     tracer_pos = pos_num
     tracer_hel = helix_num
+    last_tracer_pos = tracer_pos
+    last_tracer_hel = tracer_hel
+    length_max = 80
+    length_min = 20
     alphabet = [chr(i) for i in range(97,123)]
     alphabet.extend(['E'] * 100)
     domain_num = 0
     count = 0
     max_count = 0
+    hel_history = []
     start = str(tracer_hel) + '[' + str(tracer_pos) + '],'
-    if blueprint['vstrands'][tracer_hel]['scaf'][tracer_pos][0] == -1:
-        domain_string = 'S'
-    else:
-        domain_string = 'a'
+    staple_3_end = 0
+    domain_string = ''
+    # if blueprint['vstrands'][tracer_hel]['scaf'][tracer_pos][0] == -1:
+        # domain_string = 'S'
+    # else:
+        # domain_string = 'a'
 
-    while blueprint['vstrands'][tracer_hel]['stap'][tracer_pos][2] != -1:
-        if blueprint['vstrands'][tracer_hel]['scaf'][tracer_pos][0] == -1:
+    while staple_3_end != -1:
+        if blueprint['vstrands'][tracer_hel]['scaf'][tracer_pos][0] == -1 and blueprint['vstrands'][tracer_hel]['scaf'][tracer_pos][2] == -1: # Both end of scaffold is monitored. If scaffold is blank.
+            staple_3_end = blueprint['vstrands'][tracer_hel]['stap'][tracer_pos][2]
             count = 0
             domain_string += 'S' # ssDNA region
-            new_tracer_hel = blueprint['vstrands'][tracer_hel]['stap'][tracer_pos][2]
-            new_tracer_pos = blueprint['vstrands'][tracer_hel]['stap'][tracer_pos][3]
-            tracer_hel = new_tracer_hel
-            tracer_pos = new_tracer_pos
+            last_tracer_hel = tracer_hel
+            last_tracer_pos = tracer_pos
+            tracer_hel = blueprint['vstrands'][last_tracer_hel]['stap'][last_tracer_pos][2]
+            tracer_pos = blueprint['vstrands'][last_tracer_hel]['stap'][last_tracer_pos][3]
         elif blueprint['vstrands'][tracer_hel]['stap'][tracer_pos][2] == tracer_hel and blueprint['vstrands'][tracer_hel]['scaf'][tracer_pos][0] == tracer_hel: # if domain continues
+            staple_3_end = blueprint['vstrands'][tracer_hel]['stap'][tracer_pos][2]
             count += 1
             max_count = max(count,max_count)
             domain_string += alphabet[domain_num]
+            last_tracer_pos = tracer_pos
             tracer_pos = blueprint['vstrands'][tracer_hel]['stap'][tracer_pos][3]
         else:  # domain broken
+            staple_3_end = blueprint['vstrands'][tracer_hel]['stap'][tracer_pos][2]
+            if count < 8 and count > 1:
+                hel_history.append(tracer_hel)
             count = 0
-            domain_num += 1
             domain_string += alphabet[domain_num]
-            tracer_pos_break = tracer_pos
-            tracer_pos = blueprint['vstrands'][tracer_hel]['stap'][tracer_pos][3]
-            tracer_hel = blueprint['vstrands'][tracer_hel]['stap'][tracer_pos_break][2]        
-    end = str(tracer_hel) + '[' + str(tracer_pos) + '],'
-    if max_count >= 13:
-        blueprint['vstrands'][helix_num]['stap_colors'][strand_id][1] = 255 # OK strand is painted blue.
+            domain_num += 1
+            last_tracer_hel = tracer_hel
+            last_tracer_pos = tracer_pos
+            tracer_hel = blueprint['vstrands'][last_tracer_hel]['stap'][last_tracer_pos][2]
+            tracer_pos = blueprint['vstrands'][last_tracer_hel]['stap'][last_tracer_pos][3]
+    if count < 8 and count > 1:
+        hel_history.append(tracer_hel)
+    end = str(last_tracer_hel) + '[' + str(last_tracer_pos) + '],'
+    total_len = len(domain_string)
+    if total_len < length_min:
+        blueprint['vstrands'][helix_num]['stap_colors'][strand_id][1] = 16776960  # Yellow when the sequence is too short.
+    elif total_len > length_max:
+        blueprint['vstrands'][helix_num]['stap_colors'][strand_id][1] = 16711935  # Magenta when the sequence is too long.
+    elif max_count >= 13 :
+        blueprint['vstrands'][helix_num]['stap_colors'][strand_id][1] = 255 # optimal strand is painted blue.
+        hel_history = []                                                    # short domains in optimal strand is not counted
     elif max_count >= 11:
         blueprint['vstrands'][helix_num]['stap_colors'][strand_id][1] = 65535 # Acceptable strand is painted cyan.
+        hel_history = []                                                      # short domains in acceptable strand is not counted
     else:
         blueprint['vstrands'][helix_num]['stap_colors'][strand_id][1] = 16711680 # Rest bad strands are painted red
-    write_report(report_path, start + end + domain_string)
-    if len(domain_string) > 80:
-        blueprint['vstrands'][helix_num]['stap_colors'][strand_id][1] = 16711935  # Magenta when the sequence is too long.
-    return blueprint
+    write_report(report_path, start + end + domain_string + ',' + str(total_len)) 
+    return blueprint, hel_history
 
-def count_crossover(blueprint: dict, report_path: str):
+def count_crossover(blueprint: dict, report_path: str, short_domain_list: list):
     with open(report_path, 'w') as f:
-        f.write('hel,total,scaf,stap,len\n') # Initialize report file with empty content
+        f.write('hel,total,scaf,stap,len,short_domain\n') # Initialize report file with empty content
     summary = ''
     for i in range(len(blueprint['vstrands'])):
+        neighbours = get_neighbour_helix(blueprint, i)
         hel_dict = blueprint['vstrands'][i]
-        count_scaf = 0
-        count_stap = 0
-        count = 0
         filled_len = len(hel_dict['scaf'])
-        summary = summary + str(hel_dict['num']) + ','
-        for j in range(len(hel_dict['scaf'])):
-            if hel_dict['scaf'][j][0] != i and hel_dict['scaf'][j][0] != -1 and hel_dict['stap'][j][0] != -1 and hel_dict['stap'][j][2] != -1:  # Latter two equation exclude external loop. If accept loose connection as crossover, remove them
-                count += 1
-                count_scaf += 1
-            elif hel_dict['scaf'][j][2] != i and hel_dict['scaf'][j][2] != -1 and hel_dict['stap'][j][0] != -1 and hel_dict['stap'][j][2] != -1:
-                count += 1
-                count_scaf += 1
-            elif hel_dict['stap'][j][0] != i and hel_dict['stap'][j][0] != -1 and hel_dict['scaf'][j][0] != -1 and hel_dict['scaf'][j][2] != -1:
-                count += 1
-                count_stap += 1
-            elif hel_dict['stap'][j][2] != i and hel_dict['stap'][j][2] != -1 and hel_dict['scaf'][j][0] != -1 and hel_dict['scaf'][j][2] != -1:
-                count += 1
-                count_stap += 1
-            if hel_dict['scaf'][j][0] == -1 and hel_dict['scaf'][j][2] == -1 and hel_dict['stap'][j][0] == -1 and hel_dict['stap'][j][2] == -1:   # If both scaffold and staple are empty, it is subtracted from length of the helix
-                filled_len -= 1
-        summary = summary + f"{count},{count_scaf},{count_stap},{filled_len}\n"
+        for j in range(len(neighbours)):
+            summary = summary + str(hel_dict['num']) + '-' + str(neighbours[j]) + ','
+            count = 0
+            count_stap = 0
+            count_scaf = 0
+            for k in range(len(hel_dict['scaf'])):
+                if hel_dict['scaf'][k][0] == neighbours[j] and hel_dict['scaf'][k][1] == k and not (hel_dict['stap'][k][0] == -1 and hel_dict['stap'][k][2] == -1):  # Second equotion excludes spacer (bridged positons unmatch). Latter two equations exclude external loop. If accept loose connection as crossover, remove them
+                    count += 1
+                    count_scaf += 1
+                elif hel_dict['scaf'][k][2] == neighbours[j] and hel_dict['scaf'][k][3] == k and not (hel_dict['stap'][k][0] == -1 and hel_dict['stap'][k][2] == -1):
+                    count += 1
+                    count_scaf += 1
+                elif hel_dict['stap'][k][0] == neighbours[j] and hel_dict['stap'][k][1] == k and not (hel_dict['scaf'][k][0] == -1 and hel_dict['scaf'][k][2] == -1):
+                    count += 1
+                    count_stap += 1
+                elif hel_dict['stap'][k][2] == neighbours[j] and hel_dict['stap'][k][3] == k and not (hel_dict['scaf'][k][0] == -1 and hel_dict['scaf'][k][2] == -1):
+                    count += 1
+                    count_stap += 1
+                if j == 0 and hel_dict['scaf'][k][0] == -1 and hel_dict['scaf'][k][2] == -1 and hel_dict['stap'][k][0] == -1 and hel_dict['stap'][k][2] == -1:   # If both scaffold and staple are empty, it is subtracted from length of the helix
+                    filled_len -= 1
+            summary = summary + f"{count},{count_scaf},{count_stap},{filled_len},{short_domain_list[i]}\n"
     write_report(report_path, summary)
 
 args = get_args()
 blueprint = load_json_file(args.input_file)
 if blueprint:
-    color_change(blueprint,'domain_report.csv')
-    count_crossover(blueprint, 'crossover_report.csv')
+    count_list = [0] * len(blueprint['vstrands'])
+    short_domain_count = color_change(blueprint,'domain_report.csv')
+    short_domain_list = count_short_domain(count_list,short_domain_count)
+    count_crossover(blueprint, 'crossover_report.csv', short_domain_list)
