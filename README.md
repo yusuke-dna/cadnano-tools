@@ -3,13 +3,14 @@ This repository contains several microtools designed to enhance the functionalit
 
 ## Seeding Domain Tracer
 
-The `Seeding Domain Tracer` is a Python script that assists users in the manual optimization of the breaking points of staples in a DNA origami design. It assigns staple colors based on their status:
+The `Seeding Domain Tracer` is a Python script that assists users in the manual optimisation of the breaking points of staples in a DNA origami design. It assigns staple colours based on their status:
 
-- **Staples without ends:** These are left uncolored, appearing as the default dark grey.
-- **Staples with a length above 80 nt:** These are colored magenta.
-- **Staples with > 13 nt continuous hybridization to the scaffold:** These are colored blue.
-- **Staples with > 11 nt continuous hybridization to the scaffold:** These are colored cyan.
-- **Staples without seeding domains:** These are colored red.
+- **Staples without ends:** These are left uncoloured, appearing as the default dark grey.
+- **Staples with a length above 80 nt:** These are coloured magenta. (adjust to your policy by modifying length_max in trace_domain().)
+- **Staples with a length above 20 nt:** These are coloured yellow. (adjust to your policy by modifying length_min in trace_domain().)
+- **Staples with > 13 nt continuous hybridization to the scaffold:** These are coloured blue.
+- **Staples with > 11 nt continuous hybridization to the scaffold:** These are coloured cyan.
+- **Staples without seeding domains:** These are coloured red.
 
 ### How to Use
 
@@ -17,7 +18,20 @@ To use the Seeding Domain Tracer, navigate to the directory containing the scrip
 ```
 $ python3 seeding-domain-tracer.py file/path/to/json/file.json
 ```
-The script will generate two output files: `output.json` and `report.txt`. The `output.json` file is compatible with cadnano2, while `report.txt` lists the staples to display domain properties. In this list, the first column shows the location of 5' end of the strand, in the same way as staple export file of cadnano2. In the second column, domain structure is printed in following way: `a-z` represents continuous base pairings with incremental domain naming; `S` indicates a base not hybridized to the scaffold; and `E` is an error catcher for situations such as the presence of more than 26 domains in single staple (too long in practice).
+The script will generate three output files: `output.json`, `crossover_report.csv` and `domain_report.csv`. 
+- The `output.json` file is compatible with cadnano2. Open the file by cadnano2 as usual. Colour code are wrtten above.
+- `crossover_report.csv` summarises crossover frequency of every adjacent helices pair, in accending order of central helix number. So e.g. 0-1 and 1-0 appears twice. From left to right, helix number, total count of crossover, crossover count by scaffold, crossover count by staple, filled length of focusing helix, count of short domain of invalid (not either blue nor cyan) strands.
+- `domain_report.csv` lists the staples to display domain properties. In this list, the first and the second column shows the location of 5' end and 3' end of the strand, in the same way as staple export file of cadnano2. In the third column, domain structure is printed in following way: `a-z` represents continuous base pairings with incremental domain naming; `S` indicates a base not hybridised to the scaffold; and `E` is an error catcher for situations such as the presence of more than 26 domains in single staple (too long in practice). Length at the last column for reference.
+### Suggested Workflow
+* SAVE intermediate file every step
+1. Run the script
+2. If loop exists, break them to be coloured. (I recommend introducing one break in one of short domain)
+3. Correct yellow strands (too short)
+4. Review crossover frequency (`crossover_report.csv`) to make sure all adjacent helices pair has crossovers
+5. Correct red strands in high restriction area (edge, modifying sites etc) by removing excess crossovers. `crossover_report.csv` supports this step.
+6. Correct magenta strands, primary by splitting the strand keeping both halves have seeding domain. If a magenta strand can not be split keeping at least one seeding domain strand included, leave it to next step. `domain_report.csv` supports this step.
+7. Correct rest red strands and magenta strand by EFFICIENTLY removing excess crossovers. `crossover_report.csv` supports this step.
+8. At the end, review again if all adjacent helices have proper crossover (`crossover_report.csv`), and all staples are 
 
 ## Simple Multiplier
 
