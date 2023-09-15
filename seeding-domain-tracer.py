@@ -90,9 +90,9 @@ def trace_domain(blueprint: dict, helix_num: int, pos_num: int, strand_id: int, 
     last_tracer_pos = tracer_pos
     last_tracer_hel = tracer_hel
     length_max = 80    # configure as you like
-    length_min = 40    # configure as you like
-    optimal_seed_len = 14
-    acceptable_seeding_len = 12
+    length_min = 20    # configure as you like
+    optimal_seed_len = 14    # configure as you like
+    acceptable_seeding_len = 12    # configure as you like
     alphabet = [chr(i) for i in range(97,123)]
     alphabet.extend(['E'] * 100)
     domain_num = 0
