@@ -25,6 +25,7 @@ The script will generate three output files: `output.json`, `crossover_report.cs
 ### Suggested Workflow for Staple Optimisation
 
 _Updated 2023-09-16_
+
 **SAVE intermediate file every step**
 1. Run the script
 2. If loop exists, break them to be coloured. (I recommend introducing one break in one of short domain)
