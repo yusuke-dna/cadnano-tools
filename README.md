@@ -28,7 +28,7 @@ _Updated 2023-09-16_
 
 **SAVE intermediate file every step**
 1. Run the script and review coloured staples by opening `output.json` from cadnano2. The goal is to make all staples blue (or cyan).
-2. If loop exists, break them to be coloured. (I recommend introducing one break in one of short domain)
+2. If loop exists, break them and run the script again to make all strands coloured. (I recommend introducing one break in one of short domain)
 3. Correct yellow strands (too short)
 4. Review crossover frequency (`crossover_report.csv`) to make sure all adjacent helices pair has crossovers
 5. Correct red strands in high restriction area (edge, modifying sites etc) by removing excess crossovers. `crossover_report.csv` supports this step.
