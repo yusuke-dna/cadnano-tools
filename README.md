@@ -3,13 +3,17 @@ This repository contains several microtools designed to enhance the functionalit
 
 ## Semi-Autobreak
 Derived from `Seeding Domain Tracer`. A python script that support users semi-automatic optimisation of the breaking points of staples in DNA origami design. It removes exiting staple break and introduce breaks with following criteria if possible. If impossible, the strand is left intact. The user will try to rearrange crossover position refering generated report, and repeat running the script to make all strands blue.
+### Criteria
+- All staple should have seeding domain, continuous hybridisation to the scaffold, with longer than 11 nt, or preferably > 13 nt. (configurable in the script)
+- The length of all split staple should be within the specified range, ≥ 20 and ≤ 80 as default. (configurable in the script)
+- Most optimal breaking point is selected among all possible combination, according to its `score`. The score represents the quality of split staples. Shorter staple is preferable (min length:max length = 2:1), higher split number is preferable (score is total of individual split staple score), and seeding domain above 13 is prefarable than one above 11 (1:0.3).
+### Colour Code
 - **Staples without ends:** These are left uncoloured, appearing as the default dark grey.
 - **Staples with a length above 80 nt:** These are coloured magenta. (adjust to your policy by modifying length_max in trace_domain().)
 - **Staples with a length below 20 nt:** These are coloured yellow. (adjust to your policy by modifying length_min in trace_domain().)
 - **Staples with > 13 nt continuous hybridisation to the scaffold:** These are coloured blue.
 - **Staples with > 11 nt continuous hybridisation to the scaffold:** These are coloured cyan.
 - **Staples without seeding domains:** These are coloured red.
-
 ### How to Use
 
 To use the Semi-Autobreak, navigate to the directory containing the script and run the following command:
