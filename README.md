@@ -37,7 +37,7 @@ _Updated 2023-09-17_
 4. Review crossover frequency (`crossover_report_autobreak.csv`) to make sure all adjacent helices pair has crossovers
 5. Correct red strands in high restriction area (edge, modifying sites etc) by removing excess crossovers or relocate crossovers. `crossover_report_autobreak.csv` let you know which strands has enough crossover, while `domain_report_autobreak.csv` tells which part of domain should be extended by removing crossover.
 6. Correct rest red strands and magenta strand by EFFICIENTLY removing excess crossovers or relocate crossovers. `crossover_report_autobreak.csv` and `domain_report_autobreak` support this step. Repeat rearranging crossover and running the script, until all staples become blue or cyan.
-7. At the end, review again if all adjacent helices have crossover in proper frequency (`crossover_report_autobreak.csv`).
+7. At the end, review again to make sure all adjacent helices have crossover in proper frequency (`crossover_report_autobreak.csv`) and location (output_autobreak.json).
 
 ## Seeding Domain Tracer
 
