@@ -7,9 +7,9 @@ The `Seeding Domain Tracer` is a Python script that assists users in the manual 
 
 - **Staples without ends:** These are left uncoloured, appearing as the default dark grey.
 - **Staples with a length above 80 nt:** These are coloured magenta. (adjust to your policy by modifying length_max in trace_domain().)
-- **Staples with a length above 20 nt:** These are coloured yellow. (adjust to your policy by modifying length_min in trace_domain().)
-- **Staples with > 13 nt continuous hybridization to the scaffold:** These are coloured blue.
-- **Staples with > 11 nt continuous hybridization to the scaffold:** These are coloured cyan.
+- **Staples with a length below 20 nt total hybridisation:** These are coloured yellow. (adjust to your policy by modifying length_min in trace_domain().)
+- **Staples with > 13 nt continuous hybridisation to the scaffold:** These are coloured blue.
+- **Staples with > 11 nt continuous hybridisation to the scaffold:** These are coloured cyan.
 - **Staples without seeding domains:** These are coloured red.
 
 ### How to Use
