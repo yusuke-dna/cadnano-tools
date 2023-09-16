@@ -8,8 +8,8 @@ except ImportError as e:
     print(f"Please install it by running 'pip install {missing_module}' and then run the script again.")
     exit()
 
-max_length = 60    # configure as you like
-min_length = 22    # configure as you like
+max_length = 80    # configure as you like
+min_length = 20    # configure as you like
 optimal_seed_len = 14    # configure as you like
 acceptable_seed_len = 12    # configure as you like
 
