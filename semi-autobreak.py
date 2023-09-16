@@ -1,18 +1,17 @@
-import csv
-
 try:
     import argparse
     import json
+    import csv
 except ImportError as e:
     missing_module = str(e).split(" ")[-1].replace("'", "")
     print(f"Error: The required module {missing_module} is not installed.")
     print(f"Please install it by running 'pip install {missing_module}' and then run the script again.")
     exit()
 
-max_length = 80    # configure as you like
-min_length = 40    # configure as you like
-optimal_seed_len = 14
-acceptable_seed_len = 12
+max_length = 60    # configure as you like
+min_length = 22    # configure as you like
+optimal_seed_len = 14    # configure as you like
+acceptable_seed_len = 12    # configure as you like
 
 def trace_domain(blueprint: dict, helix_num: int, pos_num: int, strand_id: int, report_path: str, max_length=max_length, min_length=min_length, optimal_seed_len=optimal_seed_len, acceptable_seed_len=acceptable_seed_len) -> tuple [dict, list]:
     # Change color of specific helices according to domain composition.
@@ -190,15 +189,22 @@ def autobreak_search(input_seq: str, min_length=min_length, max_length=max_lengt
     def score_seq(sequence: str) -> float:  # at present the location of seeding domain is not considered
         seeding_domain = 0
         count = 0
+        last_letter = '!'
         for i in range(len(sequence)):
             # check if i-th letter is upper case
+            if last_letter != sequence[i]:
+                count = 0
+                last_letter = sequence[i]
             if sequence[i].isupper():
                 count += 1
-            if count >= optimal_seed:
+            if last_letter != sequence[i]:
+                count = 0
+                last_letter = sequence[i]
+            if count >= optimal_seed or seeding_domain == 1:
                 seeding_domain = 1
             elif count >= acceptable_seed:
-                seeding_domain = 0.5
-        return seeding_domain * max_length**2 / len(sequence)**2
+                seeding_domain = 0.3        # 0.3 fold penalty to acceptable strand  
+        return seeding_domain * ( 2 - (len(sequence) - min_length) / (max_length - min_length) )    # length penalty: Max length get half score than min length. Besides, shorter split gives more number of split strands each of them has score.
 
     patterns = [{'split_length': [], 'score': 0, 'remaining': input_seq}]
     completed = False
@@ -238,12 +244,15 @@ def autobreak_search(input_seq: str, min_length=min_length, max_length=max_lengt
             pattern['score'] += score_seq(pattern['remaining'])
             pattern['split_length'].append(len(pattern['remaining']))   # for easy debugging
 
-    if len(final_patterns) > 1:
+    if len(final_patterns) > 0:
         highest_score_pattern = max(final_patterns, key=lambda x: x['score'])
-        print("break to " + str(highest_score_pattern['split_length']) + " score: " + str(highest_score_pattern['score']))
+        if len(highest_score_pattern['split_length']) > 1:
+            print("break to " + str(highest_score_pattern['split_length']) + " score: " + str(highest_score_pattern['score']) + ", highest among " + str(len(final_patterns)) + " breaking patterns")
+        else:
+            print("left as " + str(highest_score_pattern['split_length']) + " score: " + str(highest_score_pattern['score']))
     else:
         highest_score_pattern = {'split_length': []}
-        print("skipped")
+        print("skipped as no patterns met given criteria. manual breaking required")
     return highest_score_pattern['split_length'][:-1]
 
 def autobreak(blueprint: dict, report_path: str) -> dict:
@@ -256,7 +265,7 @@ def autobreak(blueprint: dict, report_path: str) -> dict:
     # for each line, get sequence and split it
     for line in csv_list:
         start, _, sequence, _ = line
-        print("autobreak staple: " + str(start))
+        print("autobreaking staple: " + str(start) + " ...")
         split_length = autobreak_search(sequence)
         hel, pos = start.split('[')
         hel = int(hel)
@@ -328,7 +337,6 @@ def reconnect_breaks(blueprint: dict, hel_num: int, pos_num: int) -> dict:
                     break
         else:
             end_flag = True
-        # sort accending order 
     return blueprint
 
 args = get_args()
@@ -345,7 +353,7 @@ if blueprint:
     short_domain_list = count_short_domain(count_list,short_domain_count)
     crossover_counter(blueprint, 'crossover_report_temp.csv', short_domain_list)
     blueprint = autobreak(blueprint,'domain_report_temp.csv')
-    # color change again and update report (comment out if you don't want to update autobreaked color and report)
+    # color change again and update report (comment out if you don't want to update autobreak color and report)
     count_list = [0] * len(blueprint['vstrands'])
     short_domain_count = color_change(blueprint,'domain_report_autobreak.csv', 'output_autobreak.json') # overwrite colored blueprint
     short_domain_list = count_short_domain(count_list,short_domain_count)
