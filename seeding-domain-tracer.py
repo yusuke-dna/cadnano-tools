@@ -7,82 +7,6 @@ except ImportError as e:
     print(f"Please install it by running 'pip install {missing_module}' and then run the script again.")
     exit()
 
-def get_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('input_file', type=str, help='The input JSON file path for cadnano2 design.')
-    return parser.parse_args()
-
-def load_json_file(filename: str) -> dict: 
-    try:
-        with open(filename, 'r') as f:
-            return json.load(f)
-    except FileNotFoundError:
-        print('Error: File not found.')
-        return None
-
-def write_json_file(filename: str, data: dict):
-    with open(filename, 'w') as f:
-        json.dump(data, f)
-
-def write_report(filename: str, content: str):
-    with open(filename, 'a') as f:
-        f.write(content + '\n')
-
-def color_change(blueprint: dict, filename: str) -> list: 
-    short_domain_list = []
-    with open(filename, 'w') as f:
-        f.write('start,end,domains,length\n') # Initialize report file with empty content
-    for helix_id, helix in enumerate(blueprint['vstrands']):
-        for strand_id, strand in enumerate(helix['stap_colors']):
-            position = strand[0]
-            blueprint, new_short_domains = trace_domain(blueprint, helix_id, position, strand_id, filename)
-            short_domain_list.extend(new_short_domains)
-    write_json_file('output.json', blueprint)
-    return short_domain_list
-
-def is_empty_helix(vstrands: list) -> bool:
-    empty = True
-    for i in range(len(vstrands['scaf'])):
-        if not (vstrands['scaf'][i][0] == -1 and vstrands['scaf'][i][1] == -1 and vstrands['scaf'][i][2] == -1 and vstrands['scaf'][i][3] == -1 and vstrands['stap'][i][0] == -1 and vstrands['stap'][i][1] == -1 and vstrands['stap'][i][2] == -1 and vstrands['stap'][i][3] == -1) :
-            empty = False
-    return empty
-
-def get_neighbour_helix(blueprint: dict, helix_id: int) -> list:
-    # Get helix id of neighbours
-    neighbour_list = []
-    if not is_empty_helix(blueprint['vstrands'][helix_id]):
-        # if neibour is triangle (row + col is odd)
-        if (blueprint['vstrands'][helix_id]['row'] + blueprint['vstrands'][helix_id]['col']) % 2 == 0:
-            for helix_num in range(len(blueprint['vstrands'])):
-                candidate = -1
-                if blueprint['vstrands'][helix_num]['col'] == blueprint['vstrands'][helix_id]['col'] - 1 and blueprint['vstrands'][helix_num]['row'] == blueprint['vstrands'][helix_id]['row']:
-                    candidate = helix_num
-                elif blueprint['vstrands'][helix_num]['col'] == blueprint['vstrands'][helix_id]['col'] + 1 and blueprint['vstrands'][helix_num]['row'] == blueprint['vstrands'][helix_id]['row']:
-                    candidate = helix_num
-                elif blueprint['vstrands'][helix_num]['col'] == blueprint['vstrands'][helix_id]['col'] and blueprint['vstrands'][helix_num]['row'] == blueprint['vstrands'][helix_id]['row'] - 1:
-                    candidate = helix_num
-                if candidate != -1: #not is_empty_helix(blueprint['vstrands'][candidate])
-                    neighbour_list.append(candidate)
-        # if neibour is reverse triangle
-        else:
-            for helix_num in range(len(blueprint['vstrands'])):
-                candidate = -1
-                if blueprint['vstrands'][helix_num]['col'] == blueprint['vstrands'][helix_id]['col'] - 1 and blueprint['vstrands'][helix_num]['row'] == blueprint['vstrands'][helix_id]['row']:
-                    candidate = helix_num
-                elif blueprint['vstrands'][helix_num]['col'] == blueprint['vstrands'][helix_id]['col'] + 1 and blueprint['vstrands'][helix_num]['row'] == blueprint['vstrands'][helix_id]['row']:
-                    candidate = helix_num
-                elif blueprint['vstrands'][helix_num]['col'] == blueprint['vstrands'][helix_id]['col'] and blueprint['vstrands'][helix_num]['row'] == blueprint['vstrands'][helix_id]['row'] + 1:
-                    candidate = helix_num
-                if candidate != -1:
-                    neighbour_list.append(candidate)
-    return neighbour_list
-
-def count_short_domain(count_list,short_domain_list) -> list:
-    # Count number of short domains in each helix
-    for helix_id in short_domain_list:
-        count_list[helix_id] += 1
-    return count_list
-
 def trace_domain(blueprint: dict, helix_num: int, pos_num: int, strand_id: int, report_path: str) -> tuple [dict, list]:
     # Change color of specific helices according to domain composition.
     tracer_pos = pos_num
@@ -91,8 +15,8 @@ def trace_domain(blueprint: dict, helix_num: int, pos_num: int, strand_id: int, 
     last_tracer_hel = tracer_hel
     length_max = 80    # configure as you like
     length_min = 20    # configure as you like
-    optimal_seed_len = 14    # configure as you like
-    acceptable_seeding_len = 12    # configure as you like
+    optimal_seed_len = 14
+    acceptable_seeding_len = 12
     alphabet = [chr(i) for i in range(97,123)]
     alphabet.extend(['E'] * 100)
     domain_num = 0
@@ -102,10 +26,6 @@ def trace_domain(blueprint: dict, helix_num: int, pos_num: int, strand_id: int, 
     start = str(tracer_hel) + '[' + str(tracer_pos) + '],'
     staple_3_end = 0
     domain_string = ''
-    # if blueprint['vstrands'][tracer_hel]['scaf'][tracer_pos][0] == -1:
-        # domain_string = 'S'
-    # else:
-        # domain_string = 'a'
 
     while staple_3_end != -1:
         if blueprint['vstrands'][tracer_hel]['scaf'][tracer_pos][0] == -1 and blueprint['vstrands'][tracer_hel]['scaf'][tracer_pos][2] == -1: # Both end of scaffold is monitored. If scaffold is blank.
@@ -153,7 +73,7 @@ def trace_domain(blueprint: dict, helix_num: int, pos_num: int, strand_id: int, 
     write_report(report_path, start + end + domain_string + ',' + str(total_len)) 
     return blueprint, hel_history
 
-def count_crossover(blueprint: dict, report_path: str, short_domain_list: list):
+def crossover_counter(blueprint: dict, report_path: str, short_domain_list: list):
     with open(report_path, 'w') as f:
         f.write('hel,total,scaf,stap,len,short_domain\n') # Initialize report file with empty content
     summary = ''
@@ -184,10 +104,86 @@ def count_crossover(blueprint: dict, report_path: str, short_domain_list: list):
             summary = summary + f"{count},{count_scaf},{count_stap},{filled_len},{short_domain_list[i]}\n"
     write_report(report_path, summary)
 
+def get_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('input_file', type=str, help='The input JSON file path for cadnano2 design.')
+    return parser.parse_args()
+
+def load_json_file(filename: str) -> dict: 
+    try:
+        with open(filename, 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        print('Error: File not found.')
+        return None
+
+def write_json_file(filename: str, data: dict):
+    with open(filename, 'w') as f:
+        json.dump(data, f)
+
+def write_report(filename: str, content: str):
+    with open(filename, 'a') as f:
+        f.write(content + '\n')
+
+def color_change(blueprint: dict, filename: str) -> list: 
+    short_domain_list = []
+    with open(filename, 'w') as f:
+        f.write('start,end,domains,length\n') # Initialize report file with empty content
+    for helix_id, helix in enumerate(blueprint['vstrands']):
+        for strand_id, strand in enumerate(helix['stap_colors']):
+            position = strand[0]
+            blueprint, new_short_domains = trace_domain(blueprint, helix_id, position, strand_id, filename)
+            short_domain_list.extend(new_short_domains)
+    write_json_file('output.json', blueprint)
+    return short_domain_list
+
+def is_empty_helix(vstrands: list) -> bool:
+    empty = True
+    for i in range(len(vstrands['scaf'])):
+        if not (vstrands['scaf'][i][0] == -1 and vstrands['scaf'][i][1] == -1 and vstrands['scaf'][i][2] == -1 and vstrands['scaf'][i][3] == -1 and vstrands['stap'][i][0] == -1 and vstrands['stap'][i][1] == -1 and vstrands['stap'][i][2] == -1 and vstrands['stap'][i][3] == -1) :
+            empty = False
+    return empty
+
+def get_neighbour_helix(blueprint: dict, helix_id: int) -> list:
+    # Get helix id of neighbours
+    neighbour_list = []
+    if not is_empty_helix(blueprint['vstrands'][helix_id]):
+        # if neibour is triangle (row + col is odd) arrangement
+        if (blueprint['vstrands'][helix_id]['row'] + blueprint['vstrands'][helix_id]['col']) % 2 == 0:
+            for helix_num in range(len(blueprint['vstrands'])):
+                candidate = -1
+                if blueprint['vstrands'][helix_num]['col'] == blueprint['vstrands'][helix_id]['col'] - 1 and blueprint['vstrands'][helix_num]['row'] == blueprint['vstrands'][helix_id]['row']:
+                    candidate = helix_num
+                elif blueprint['vstrands'][helix_num]['col'] == blueprint['vstrands'][helix_id]['col'] + 1 and blueprint['vstrands'][helix_num]['row'] == blueprint['vstrands'][helix_id]['row']:
+                    candidate = helix_num
+                elif blueprint['vstrands'][helix_num]['col'] == blueprint['vstrands'][helix_id]['col'] and blueprint['vstrands'][helix_num]['row'] == blueprint['vstrands'][helix_id]['row'] - 1:
+                    candidate = helix_num
+                if candidate != -1 and not is_empty_helix(blueprint['vstrands'][candidate]):
+                    neighbour_list.append(candidate)
+        # if neibour is reverse triangle arrangement
+        else:
+            for helix_num in range(len(blueprint['vstrands'])):
+                candidate = -1
+                if blueprint['vstrands'][helix_num]['col'] == blueprint['vstrands'][helix_id]['col'] - 1 and blueprint['vstrands'][helix_num]['row'] == blueprint['vstrands'][helix_id]['row']:
+                    candidate = helix_num
+                elif blueprint['vstrands'][helix_num]['col'] == blueprint['vstrands'][helix_id]['col'] + 1 and blueprint['vstrands'][helix_num]['row'] == blueprint['vstrands'][helix_id]['row']:
+                    candidate = helix_num
+                elif blueprint['vstrands'][helix_num]['col'] == blueprint['vstrands'][helix_id]['col'] and blueprint['vstrands'][helix_num]['row'] == blueprint['vstrands'][helix_id]['row'] + 1:
+                    candidate = helix_num
+                if candidate != -1 and not is_empty_helix(blueprint['vstrands'][candidate]):
+                    neighbour_list.append(candidate)
+    return neighbour_list
+
+def count_short_domain(count_list,short_domain_list) -> list:
+    # Count number of short domains in each helix
+    for helix_id in short_domain_list:
+        count_list[helix_id] += 1
+    return count_list
+
 args = get_args()
 blueprint = load_json_file(args.input_file)
 if blueprint:
     count_list = [0] * len(blueprint['vstrands'])
     short_domain_count = color_change(blueprint,'domain_report.csv')
     short_domain_list = count_short_domain(count_list,short_domain_count)
-    count_crossover(blueprint, 'crossover_report.csv', short_domain_list)
+    crossover_counter(blueprint, 'crossover_report.csv', short_domain_list)
