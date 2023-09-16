@@ -2,7 +2,7 @@
 This repository contains several microtools designed to enhance the functionality of cadnano, a popular software for designing DNA nanostructures.
 
 ## Semi-Autobreak
-Derived from `Seeding Domain Tracer`. A python script that support users semi-automatic optimisation of the breaking points of staples in DNA origami design. It remove exiting staple break and introduce breaks with following criteria if possible. If impossible, the strand is left intact. The user will try to rearrange crossover position refering generated report, and repeat running the script to make all strands blue.
+Derived from `Seeding Domain Tracer`. A python script that support users semi-automatic optimisation of the breaking points of staples in DNA origami design. It removes exiting staple break and introduce breaks with following criteria if possible. If impossible, the strand is left intact. The user will try to rearrange crossover position refering generated report, and repeat running the script to make all strands blue.
 - **Staples without ends:** These are left uncoloured, appearing as the default dark grey.
 - **Staples with a length above 80 nt:** These are coloured magenta. (adjust to your policy by modifying length_max in trace_domain().)
 - **Staples with a length below 20 nt:** These are coloured yellow. (adjust to your policy by modifying length_min in trace_domain().)
