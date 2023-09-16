@@ -9,6 +9,22 @@ Derived from `Seeding Domain Tracer`. A python script that support users semi-au
 - **Staples with > 13 nt continuous hybridisation to the scaffold:** These are coloured blue.
 - **Staples with > 11 nt continuous hybridisation to the scaffold:** These are coloured cyan.
 - **Staples without seeding domains:** These are coloured red.
+- 
+### How to Use
+
+To use the Semi-Autobreak, navigate to the directory containing the script and run the following command:
+```
+$ python3 semi-autobreak.py file/path/to/json/file.json
+```
+The script will generate five output files: `output.json`, `crossover_report.csv`, `domain_report.csv`, `output_connected.json`, `output_autobreak.json`, `crossover_report_autobreak.csv`, `domain_report_autobreak.csv`, and `domain_report_temp.csv`. 
+- The `output.json` file is compatible with cadnano2. Open the file by cadnano2 as usual. Colour code are wrtten above.
+- `crossover_report.csv` summarises crossover frequency of every adjacent helices pair, in accending order of central helix number. So e.g. 0-1 and 1-0 appears twice. From left to right, helix number, total count of crossover, crossover count by scaffold, crossover count by staple, filled length of focusing helix, count of short domain of invalid (not either blue nor cyan) strands.
+- `domain_report.csv` lists the staples to display domain properties. In this list, the first and the second column shows the location of 5' end and 3' end of the strand, in the same way as staple export file of cadnano2. In the third column, domain structure is printed in following way: `a-z` represents continuous base pairings with incremental domain naming. If the domain is longer than 13 nt, the domain is shown by upper letter `A-Z`; `^` indicates a base not hybridised to the scaffold; and `!` is an error catcher for situations such as the presence of more than 26 domains in single staple (too long in practice). Length at the last column for reference.
+- `output_connected.json` is a cadnano2 compatible file with all staple break reconnected.
+- `output_autobreak.json` is a cadnano2 compatible file after autobreak. The color code follows as output.json file.
+- `crossover_report_autobreak.csv` is equivalent file of domain_report but after autobreak. 
+- `domain_report_autobreak.csv` is equivalent file of domain_report but after autobreak.
+- `domain_report_temp.csv` is temporal file to be used in autobreak script.
 
 ## Seeding Domain Tracer
 
