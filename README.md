@@ -9,7 +9,7 @@ Derived from `Seeding Domain Tracer`. A python script that support users semi-au
 - **Staples with > 13 nt continuous hybridisation to the scaffold:** These are coloured blue.
 - **Staples with > 11 nt continuous hybridisation to the scaffold:** These are coloured cyan.
 - **Staples without seeding domains:** These are coloured red.
-- 
+
 ### How to Use
 
 To use the Semi-Autobreak, navigate to the directory containing the script and run the following command:
@@ -25,6 +25,19 @@ The script will generate five output files: `output.json`, `crossover_report.csv
 - `crossover_report_autobreak.csv` is equivalent file of domain_report but after autobreak. 
 - `domain_report_autobreak.csv` is equivalent file of domain_report but after autobreak.
 - `domain_report_temp.csv` is temporal file to be used in autobreak script.
+
+### Staple Optimisation Workflow with Seeding Domain Tracer
+
+_Updated 2023-09-17_
+
+**SAVE intermediate file every step**
+1. Run the script and review coloured staples by opening `output_autobreak.json` from cadnano2. The goal is to make all staples blue (or cyan).
+2. If loop exists, break them and run the script again to make all strands coloured. (I recommend introducing one break in one of short domain)
+3. Correct yellow strands (too short)
+4. Review crossover frequency (`crossover_report_autobreak.csv`) to make sure all adjacent helices pair has crossovers
+5. Correct red strands in high restriction area (edge, modifying sites etc) by removing excess crossovers or relocate crossovers. `crossover_report_autobreak.csv` let you know which strands has enough crossover, while `domain_report_autobreak.csv` tells which part of domain should be extended by removing crossover.
+6. Correct rest red strands and magenta strand by EFFICIENTLY removing excess crossovers or relocate crossovers. `crossover_report_autobreak.csv` and `domain_report_autobreak` support this step. Repeat rearranging crossover and running the script, until all staples become blue or cyan.
+7. At the end, review again if all adjacent helices have crossover in proper frequency (`crossover_report_autobreak.csv`).
 
 ## Seeding Domain Tracer
 
@@ -47,6 +60,7 @@ The script will generate three output files: `output.json`, `crossover_report.cs
 - The `output.json` file is compatible with cadnano2. Open the file by cadnano2 as usual. Colour code are wrtten above.
 - `crossover_report.csv` summarises crossover frequency of every adjacent helices pair, in accending order of central helix number. So e.g. 0-1 and 1-0 appears twice. From left to right, helix number, total count of crossover, crossover count by scaffold, crossover count by staple, filled length of focusing helix, count of short domain of invalid (not either blue nor cyan) strands.
 - `domain_report.csv` lists the staples to display domain properties. In this list, the first and the second column shows the location of 5' end and 3' end of the strand, in the same way as staple export file of cadnano2. In the third column, domain structure is printed in following way: `a-z` represents continuous base pairings with incremental domain naming. If the domain is longer than 13 nt, the domain is shown by upper letter `A-Z`; `^` indicates a base not hybridised to the scaffold; and `!` is an error catcher for situations such as the presence of more than 26 domains in single staple (too long in practice). Length at the last column for reference.
+
 ### Staple Optimisation Workflow with Seeding Domain Tracer
 
 _Updated 2023-09-16_
@@ -59,7 +73,7 @@ _Updated 2023-09-16_
 5. Correct red strands in high restriction area (edge, modifying sites etc) by removing excess crossovers. `crossover_report.csv` supports this step.
 6. Correct magenta strands, primary by splitting the strand keeping both halves have seeding domain. If a magenta strand can not be split keeping at least one seeding domain strand included, leave it to next step. `domain_report.csv` supports this step.
 7. Correct rest red strands and magenta strand by EFFICIENTLY removing excess crossovers. `crossover_report.csv` supports this step.
-8. At the end, review again if all adjacent helices have proper crossover (`crossover_report.csv`), and all staples are 
+8. At the end, review again if all adjacent helices have proper crossover (`crossover_report.csv`).
 
 ## Simple Multiplier
 
