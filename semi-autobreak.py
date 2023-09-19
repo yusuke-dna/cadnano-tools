@@ -20,7 +20,7 @@ def get_args():
     parser.add_argument('-connect', '-reconnect' '-c', dest='connect', action='store_true', help='Reconnect all break point of staples, by halting autobreak script')
     parser.add_argument('-color', '-colour' '-intermediate' '-i', dest='color', action='store_true', help='Leave intermediate JSON file displaying autobroken staples in green')
     parser.add_argument('-limit', '-threshold', '-t', dest='limit', type=int, default=5000, help='5000 by default. Limiter to prevent combinatorial explosion. The threshold to apply filter (below) breaking pattern variation. For low restriction design, apply limit below 1000 to reduce calculation cost, with no siginficant difference')
-    parser.add_argument('-filter', '-f', dest='filter', type=int, default=100, help='100 by default. Filter to prevent combinatorial explosion. The pattern exceeding threshold (above) will be filtered to this number')
+    parser.add_argument('-filter', '-f', dest='filter', type=int, default=100, help='100 by default. Filter to prevent combinatorial explosion. The pattern exceeding threshold (above) will be filtered to this number. For low restriction design, apply limit below 1000 to reduce calculation cost, with no siginficant difference')
     parser.add_argument('-distance', '-d', dest='distance', type=int, default=3, help='3 by default. Distance from 5-/3-end of staple and staple crossover (not considering scaffold crossover)')   
     return parser.parse_args()
 
