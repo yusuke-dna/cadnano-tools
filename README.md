@@ -43,8 +43,8 @@ The script will generate several output files: `output.json`, `crossover_report.
 - `-manual`: Only the staple colour is updated and autobreak is skipped. This behaviour is the same as the seeding-domain-tracer.
 - `-connect`: Reconnect all breakpoints of staples, by halting the autobreak script.
 - `-color`: Retain an intermediate JSON file displaying autobroken staples in green.
-- `-limit`: 10000 by default. Limiter to prevent combinatorial explosion. The threshold to apply filter (below) breaking pattern variation. For low restriction design (long average domain length), weight (**(optimal_seed_len/average_domain_len)) is automatically applied to reduce wasteful calculation cost, resulting in no siginficant difference.
-- `-filter`: 100 by default. Filter to prevent combinatorial explosion. The pattern exceeding threshold (above) will be filtered to this number.
+- `-limit`: 5000 by default. Limiter to prevent combinatorial explosion. The threshold to apply filter (below) breaking pattern variation. For low restriction design (long average domain length), weight (**(optimal_seed_len/average_domain_len)) is automatically applied to reduce wasteful calculation cost, resulting in no siginficant difference.
+- `-filter`: 100 by default. Filter to prevent combinatorial explosion. The pattern exceeding threshold (above) will be filtered to this number. For low restriction design (long average domain length), weight (**(optimal_seed_len/average_domain_len)) is automatically applied to reduce wasteful calculation cost, resulting in no siginficant difference.
 - `-distance`: 3 by default. Distance from 5-/3-end of staple and staple crossover (not considering scaffold crossover).
 
 ### Staple Optimisation Workflow Semi-Autobreak
