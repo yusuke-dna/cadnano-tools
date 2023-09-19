@@ -2,59 +2,63 @@
 This repository contains several microtools designed to enhance the functionality of cadnano, a popular software for designing DNA nanostructures.
 
 ## Semi-Autobreak
-Consolidated with `Seeding Domain Tracer`. A python script that support users' semi-automatic optimisation of the breaking points of staples in DNA origami design. It removes exiting staple break and introduce breaks with following criteria if possible. If impossible, the strand is left intact. The user will try to rearrange crossover position refering generated reports, and repeat running the script to make all strands blue.
+Merged with `Seeding Domain Tracer`. A Python script that supports users' semi-automatic optimisation of the breaking points of staples in DNA origami design. It removes existing staple breaks and introduces breaks with the following criteria if possible. If not possible, the strand is left intact. Users will attempt to rearrange the crossover position referring to the generated reports and repeatedly run the script to turn all strands blue.
+
 ### Criteria
-- All staples should have seeding domain, continuous hybridisation to the scaffold, with longer than 11 nt, or preferably > 13 nt. (configurable by optional arguments)
+- All staples should have a seeding domain, continuous hybridisation to the scaffold, longer than 11 nt or, preferably, > 13 nt. (configurable by optional arguments)
 - The length of all split staples should be within the specified range, ≥ 20 and ≤ 80 by default. (configurable by optional arguments)
-- The most preferable breaking point is selected among all possible combination, according to its `score`. The score represents the quality of split staples. Shorter staple is preferable (min length staple has twice score as max length staple), higher split number is preferable (score is the total of individual split staple score), and seeding domain above 13 is prefarable than one above 11 (1:0.3).
-See ref at the bottom for theoretical/experimental background about `seeding domain`.
+- The most preferable breaking point is selected from all possible combinations based on its `score`. The score represents the quality of split staples. A shorter staple is preferable (minimum length staple has twice the score as maximum length staple), a higher split number is preferable (score is the sum of individual split staple scores), and a seeding domain above 13 is more preferable than one above 11 (1:0.3).
+  
+_See the reference at the bottom for the theoretical/experimental background about `seeding domain`._
+
 ### Colour Code
-- **Staples without ends:** These are left uncoloured, appearing as the default dark grey.
-- **Staples with a length above 80 nt:** These are coloured magenta. (adjust to your policy by modifying length_max in trace_domain().)
-- **Staples with a length below 20 nt:** These are coloured yellow. (adjust to your policy by modifying length_min in trace_domain().)
+- **Staples without ends:** These remain uncoloured, appearing as the default dark grey.
+- **Staples with a length above 80 nt:** These are coloured magenta. (Adjust according to your policy by modifying length_max in trace_domain().)
+- **Staples with a length below 20 nt:** These are coloured yellow. (Adjust according to your policy by modifying length_min in trace_domain().)
 - **Staples with > 13 nt continuous hybridisation to the scaffold:** These are coloured blue.
 - **Staples with > 11 nt continuous hybridisation to the scaffold:** These are coloured cyan.
 - **Staples without seeding domains:** These are coloured red.
+
 ### How to Use
 
-To use the Semi-Autobreak, navigate to the directory containing the script and run the following command:
+To use Semi-Autobreak, navigate to the directory containing the script and run the following command:
+
 ```
 $ python3 semi-autobreak.py file/path/to/json/file.json
 ```
-The script will generate five output files: `output.json`, `crossover_report.csv`, `domain_report.csv`, and optionnally `output_connected.json`, `output_autobreak.json`, `crossover_report_connected.csv`, `domain_report_connected.csv`. 
-- The `output.json` file is compatible with cadnano2. Open the file by cadnano2 as usual. Colour code are wrtten above.
-- `crossover_report.csv` summarises crossover frequency of every adjacent helices pair, in accending order of central helix number. So e.g. 0-1 and 1-0 appears twice. From left to right, helix number, total count of crossover, crossover count by scaffold, crossover count by staple, filled length of focusing helix, count of short domain of invalid (not either blue nor cyan) strands.
-- `domain_report.csv` lists the staples to display domain properties. In this list, the first and the second column shows the location of 5' end and 3' end of the strand, in the same way as staple export file of cadnano2. In the third column, domain structure is printed in following way: `a-z` represents continuous base pairings with incremental domain naming. If the domain is longer than 13 nt, the domain is shown by upper letter `A-Z`; `^` indicates a base not hybridised to the scaffold; and `!` is an error catcher for situations such as the presence of more than 26 domains in single staple (too long in practice). Length at the last column for reference.
-- Optional
-    - `output_connected.json` is a cadnano2 compatible file with all staple break reconnected.
-    - `output_autobreak.json` is a cadnano2 compatible file after autobreak. Autobreak-processed staples are shown in green.
-    - `crossover_report_connected.csv` is equivalent file of domain_report but after autoconnect and before autobreak. 
-    - `domain_report_connected.csv` is equivalent file of domain_report but after autoconnect and before autobreak.
-#### Arguments
-- `[File path]`: Mandatory augument. Input cadnano json file.
-- `-max [number]`: 80 by default. Lower limit of staple length. Colored yellow if the staple is shorter than this number
-- `-min [number]`: 20 by default. Upper limit of staple length. Colored magenta if exceeds
-- `-optimal [number]`: 14 by default. Requirement of minimum continuous hybridization length per staple. Satisifying staples are colored blue
-- `-acceptable [number]`: 12 by default. Loosen requirement of minimum continuous hybridization length per staple. Satisfying staples are colored cyan
-- `-manual`: Only staple color is updated and autobreak is skipped. The same behaviour as seeding-domain-tracer
-- `-connect`: Reconnect all break point of staples, by halting autobreak script
-- `-color`: Leave intermediate JSON file displaying autobroken staples in green
+
+The script will generate several output files: `output.json`, `crossover_report.csv`, `domain_report.csv`, and optionally `output_connected.json`, `output_autobreak.json`, `crossover_report_connected.csv`, `domain_report_connected.csv`.
+- The `output.json` file is compatible with cadnano2. Open the file with cadnano2 as usual. Colour codes are written above.
+- `crossover_report.csv` summarises the crossover frequency of every adjacent helix pair, in ascending order of the central helix number. So, e.g. 0-1 and 1-0 appear twice. From left to right: helix number, total count of crossover, crossover count by scaffold, crossover count by staple, filled length of the focused helix, count of short domains of invalid (neither blue nor cyan) strands.
+- `domain_report.csv` lists the staples to display domain properties. In this list, the first and the second column shows the locations of the 5' end and 3' end of the strand, similarly to the staple export file of cadnano2. In the third column, the domain structure is printed as follows: `a-z` represents continuous base pairings with incremental domain naming. If the domain is longer than 13 nt, the domain is shown by the upper letter `A-Z`; `^` indicates a base not hybridised to the scaffold, and `!` is an error catcher for situations like the presence of more than 26 domains in a single staple (too long in practice). Length is provided in the last column for reference.
+
+### Arguments
+- `[File path]`: Mandatory argument. Input cadnano json file.
+- `-max [number]`: 80 by default. Lower limit of staple length. Coloured yellow if the staple is shorter than this number.
+- `-min [number]`: 20 by default. Upper limit of staple length. Coloured magenta if exceeded.
+- `-optimal [number]`: 14 by default. Requirement for minimum continuous hybridisation length per staple. Staples meeting this requirement are coloured blue.
+- `-acceptable [number]`: 12 by default. A more lenient requirement for minimum continuous hybridisation length per staple. Staples that meet this requirement are coloured cyan.
+- `-manual`: Only the staple colour is updated and autobreak is skipped. This behaviour is the same as the seeding-domain-tracer.
+- `-connect`: Reconnect all breakpoints of staples, by halting the autobreak script.
+- `-color`: Retain an intermediate JSON file displaying autobroken staples in green.
+
 ### Staple Optimisation Workflow Semi-Autobreak
 
-_Updated 2023-09-19_
+_Updated on 2023-09-19_
 
-**SAVE intermediate file every step**
+**SAVE intermediate files at every step:**
 1. Run the script and review coloured staples by opening `output.json` from cadnano2. The goal is to make all staples blue (or cyan).
-2. If staple loop exists, break them and run the script again to make all strands coloured. (I recommend introducing one break in one of short domain)
-3. Run the script, and make sure all staples are coloured
-4. Correct yellow (too short) strands by extending staple ends at edges or relocating crossovers
-5. Run the script, and make sure there is no yellow staples
-6. Review crossover frequency (refer `crossover_report.csv`) to make sure all adjacent helices pair has crossovers
-7. Correct red strands in high restriction area (edge, modifying sites etc) by removing excess crossovers or relocating crossovers. `crossover_report.csv` let you know which strands has enough crossover, while `domain_report.csv` tells which part of the strand is poor in seeding domain, the target to remove crossover.
-8. Run the script and repeat 7-8 until all target staples are coloured blue or cyan.
-9. Correct rest red strands and magenta strand by EFFICIENTLY removing excess crossovers or relocating crossovers. `crossover_report.csv` and `domain_report.csv` support this step.
-10. Run the script and repeat 9-10 until all staples become blue or cyan.
-11. At the end, review again to make sure all adjacent helices have crossover in proper frequency (`crossover_report.csv`) and location (output.json).
+2. If a staple loop exists, break them and run the script again to colour all strands. (I recommend introducing a break in one of the short domains)
+3. Run the script and ensure all staples are coloured.
+4. Correct yellow (too short) strands by extending staple ends at edges or relocating crossovers.
+5. Run the script and ensure there are no yellow staples.
+6. Review the crossover frequency (refer to `crossover_report.csv`) to ensure every adjacent helix pair has crossovers.
+7. Correct red strands in high-restriction areas (edges, modifying sites, etc.) by removing excess crossovers or relocating them. `crossover_report.csv` informs you which strands have sufficient crossovers, while `domain_report.csv` indicates which part of the strand lacks seeding domains, making it the target for crossover removal.
+8. Run the script and repeat steps 7-8 until all target staples are coloured blue or cyan.
+9. Correct the remaining red strands and magenta strands by efficiently removing excess crossovers or relocating them. `crossover_report.csv` and `domain_report.csv` aid this step.
+10. Run the script and repeat steps 9-10 until all staples are blue or cyan.
+11. At last, review once more to ensure all adjacent helices have proper crossover frequency (`crossover_report.csv`) and location (`output.json`).
+12. Optionally, some edge staples extended at step 4 could be trimmed to minimum length limit. (this would be included in script in future update.)
 
 ## Simple Multiplier
 
