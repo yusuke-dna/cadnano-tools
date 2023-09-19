@@ -21,8 +21,16 @@ def get_args():
     parser.add_argument('-color', '-colour' '-intermediate' '-i', dest='color', action='store_true', help='Leave intermediate JSON file displaying autobroken staples in green')
     parser.add_argument('-limit', '-threshold', '-t', dest='limit', type=int, default=5000, help='5000 by default. Limiter to prevent combinatorial explosion. The threshold to apply filter (below) breaking pattern variation. For low restriction designs (long average domain length), weight (**(optimal_seed_len/average_domain_len)) is automatically applied to reduce wasteful calculation cost, resulting in no siginficant differences')
     parser.add_argument('-filter', '-f', dest='filter', type=int, default=100, help='100 by default. Filter to prevent combinatorial explosion. The pattern exceeding threshold (above) will be filtered to this number. For low restriction designs (long average domain length), weight (**(optimal_seed_len/average_domain_len)) is automatically applied to reduce wasteful calculation cost, resulting in no siginficant differences')
-    parser.add_argument('-distance', '-d', dest='distance', type=int, default=3, help='3 by default. Distance from 5-/3-end of staple and staple crossover (not considering scaffold crossover)')   
+    parser.add_argument('-distance', '-d', dest='distance', type=int, default=3, help='3 by default (or 4 if square lattice, apart from the case path panel width is multiple of 672). Distance from 5-/3-end of staple and staple crossover (not considering scaffold crossover)')   
     return parser.parse_args()
+
+def load_json_file(filename: str) -> dict: 
+    try:
+        with open(filename, 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        print('Error: File not found.')
+        return None
 
 args = get_args()
 min_length = args.min
@@ -33,6 +41,23 @@ optimal_seed_len = args.optimal
 acceptable_seed_len = args.acceptable
 if optimal_seed_len < acceptable_seed_len:
     raise ValueError(f'optimal seeding length {optimal_seed_len} shuold be larger than acceptable seed length {acceptable_seed_len}') 
+blueprint = load_json_file(args.input_file)
+if blueprint:
+    single_array = True
+    sorted_vstrands = sorted(blueprint['vstrands'], key=lambda x: x['col'])
+    sorted_vstrands = sorted(sorted_vstrands, key=lambda x: x['row'])
+    row = sorted_vstrands[0]['row']
+    col = sorted_vstrands[0]['col']
+    debug = []
+    for i in range(len(sorted_vstrands)):
+        if sorted_vstrands[i]['row'] == row ^ sorted_vstrands[i]['col'] == col:
+            single_array = False
+    if args.distance != 3:
+        distance = args.distance
+    elif len(blueprint['vstrands'][0]['scaf']) % 21 == 0:
+        distance = args.distance + args.distance * single_array
+    else:
+        distance = 4 + 4 * single_array
 
 def trace_domain(blueprint: dict, helix_num: int, pos_num: int, strand_id: int, report_path: str, max_length=args.max, min_length=args.min, optimal_seed_len=args.optimal, acceptable_seed_len=args.acceptable) -> tuple [dict, list]:
     # Change color of specific helices according to domain composition.
@@ -132,14 +157,6 @@ def crossover_counter(blueprint: dict, report_path: str, short_domain_list: list
             summary = summary + f"{count},{count_scaf},{count_stap},{filled_len},{short_domain_list[i]}\n"
     write_report(report_path, summary)
 
-def load_json_file(filename: str) -> dict: 
-    try:
-        with open(filename, 'r') as f:
-            return json.load(f)
-    except FileNotFoundError:
-        print('Error: File not found.')
-        return None
-
 def write_json_file(filename: str, data: dict):
     with open(filename, 'w') as f:
         json.dump(data, f)
@@ -203,7 +220,7 @@ def short_domain_counter(count_list,short_domain_list) -> list:
         count_list[helix_id] += 1
     return count_list
 
-def autobreak_search(input_seq: str, min_length=args.min, max_length=args.max, acceptable_seed_len=args.acceptable, optimal_seed_len=args.optimal, limit_num=args.limit, filter_num=args.filter, distance=args.distance) -> list:
+def autobreak_search(input_seq: str, min_length=args.min, max_length=args.max, acceptable_seed_len=args.acceptable, optimal_seed_len=args.optimal, limit_num=args.limit, filter_num=args.filter, distance=distance) -> list:
     char_counts = {}
     middle_seq = input_seq.strip('^!')
     i = 0
@@ -256,7 +273,7 @@ def autobreak_search(input_seq: str, min_length=args.min, max_length=args.max, a
             # If there's no valid split for this pattern, also consider it completed
             valid_split_found = False
             for k in range(min_length, min(max_length + 1, len(remaining_seq) - 6)):
-                if k + distance < len(remaining_seq) and remaining_seq[k - distance] == remaining_seq[k + distance] and score_seq(remaining_seq[:k]) and score_seq(remaining_seq[k:]) and len(remaining_seq[k:]) >= min_length:
+                if k + distance - 1 < len(remaining_seq) and remaining_seq[k - distance] == remaining_seq[k + distance - 1] and score_seq(remaining_seq[:k]) and score_seq(remaining_seq[k:]) and len(remaining_seq[k:]) >= min_length:
                     valid_split_found = True
                     split_length = pattern['split_length'] + [k]
                     score = pattern['score'] + score_seq(remaining_seq[:k])
