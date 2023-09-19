@@ -19,8 +19,8 @@ def get_args():
     parser.add_argument('-manual', '-m', dest='manual', action='store_true', help='Only staple color is updated and autobreak is skipped. The same behaviour as seeding-domain-tracer')
     parser.add_argument('-connect', '-reconnect' '-c', dest='connect', action='store_true', help='Reconnect all break point of staples, by halting autobreak script')
     parser.add_argument('-color', '-colour' '-intermediate' '-i', dest='color', action='store_true', help='Leave intermediate JSON file displaying autobroken staples in green')
-    parser.add_argument('-limit', '-threshold', '-t', dest='limit', type=int, default=1000, help='Limitter to prevent combinatorial explosion. The threshold to filter breaking pattern variation.')
-    parser.add_argument('-filter', '-f', dest='filter', type=int, default=100, help='Limitter to prevent combinatorial explosion. The pattern exceeding the limit is filtered to this value')
+    parser.add_argument('-limit', '-threshold', '-t', dest='limit', type=int, default=1000, help='Limiter to prevent combinatorial explosion. The threshold to apply filter breaking pattern variation.')
+    parser.add_argument('-filter', '-f', dest='filter', type=int, default=100, help='Filter to prevent combinatorial explosion. The pattern exceeding the limit is filtered to this value')
     return parser.parse_args()
 
 args = get_args()
