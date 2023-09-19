@@ -9,7 +9,7 @@ A Python script that supports users' semi-automatic optimisation of the breaking
 - All ends of staples are at least three base away from staple crossover. (configurable by optional arguments `-distance`)
 - The length of all split staples should be within the specified range, ≥ 20 and ≤ 80 by default. (configurable by optional arguments `-min` and `-max`)
 - The most preferable breaking point is selected from all possible combinations based on its `score`. The score represents the quality of split staples. A shorter staple is preferable (minimum length staple has twice the score as maximum length staple), a higher split number is preferable (score is the sum of individual split staple scores), and a seeding domain above 13 is more preferable than one above 11 (1:0.3).
-- Calculation is limited up to 10 000 patterns per cycle. If exceed, top 100 (by score) patterns are filtered to next breaking point search. (configurable by optional arguments `-limit` and `-filter`)
+- Calculation is limited up to 10 000 patterns per cycle. If exceed, top 100 (by score) patterns are filtered to next breaking point search. (configurable by optional arguments `-limit` and `-filter`) Note that a weight applied to reduce calculation cost for staples with low divesity.
   
 _See the reference at the bottom for the theoretical/experimental background about `seeding domain`._
 
@@ -43,7 +43,7 @@ The script will generate several output files: `output.json`, `crossover_report.
 - `-manual`: Only the staple colour is updated and autobreak is skipped. This behaviour is the same as the seeding-domain-tracer.
 - `-connect`: Reconnect all breakpoints of staples, by halting the autobreak script.
 - `-color`: Retain an intermediate JSON file displaying autobroken staples in green.
-- `-limit`: 10000 by default. Limiter to prevent combinatorial explosion. The threshold to apply filter (below) breaking pattern variation. For low restriction design, apply limit below 1000 to reduce calculation cost, with no siginficant difference.
+- `-limit`: 10000 by default. Limiter to prevent combinatorial explosion. The threshold to apply filter (below) breaking pattern variation. For low restriction design (long average domain length), weight (**(optimal_seed_len/average_domain_len)) is automatically applied to reduce wasteful calculation cost, resulting in no siginficant difference.
 - `-filter`: 100 by default. Filter to prevent combinatorial explosion. The pattern exceeding threshold (above) will be filtered to this number.
 - `-distance`: 3 by default. Distance from 5-/3-end of staple and staple crossover (not considering scaffold crossover).
 
