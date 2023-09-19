@@ -12,8 +12,8 @@ except ImportError as e:
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('input_file', type=str, help='The input JSON file path for cadnano2 design.')
-    parser.add_argument('-max', '-long', '-l', dest='max', type=int, default=80, help='20 by default. Upper limit of staple length. Colored magenta if exceeds')
-    parser.add_argument('-min', '-short', '-s', dest='min', type=int, default=20, help='80 by default. Lower limit of staple length. Colored yellow if the staple is shorter than this number')
+    parser.add_argument('-max', '-long', '-l', dest='max', type=int, default=80, help='80 by default. Upper limit of staple length. Colored magenta if exceeds')
+    parser.add_argument('-min', '-short', '-s', dest='min', type=int, default=18, help='18 by default. Lower limit of staple length excluding ssDNA region. Colored yellow if the staple is shorter than this number')
     parser.add_argument('-optimal', '-opt', '-o', dest='optimal' , type=int, default=14, help='14 by default. Requirement of minimum continuous hybridization length per staple. Satisifying staples are colored blue')
     parser.add_argument('-acceptable', '-accept', '-a', dest='acceptable', type=int, default=12, help='12 by default. Loosen requirement of minimum continuous hybridization length per staple. Satisfying staples are colored cyan')
     parser.add_argument('-manual', '-m', dest='manual', action='store_true', help='Only staple color is updated and autobreak is skipped. The same behaviour as seeding-domain-tracer')
@@ -116,10 +116,11 @@ def trace_domain(blueprint: dict, helix_num: int, pos_num: int, strand_id: int, 
         hel_history.append(tracer_hel)
     end = str(last_tracer_hel) + '[' + str(last_tracer_pos) + '],'
     total_len = len(domain_string)
+    core_len = len(domain_string.strip("^"))
     if blueprint['vstrands'][num2id[helix_num]]['stap_colors'][strand_id][1] == 0:         # black is left unprocessed.
         pass
-    elif total_len < min_length:
-        blueprint['vstrands'][num2id[helix_num]]['stap_colors'][strand_id][1] = 16776960  # Yellow when the sequence is too short.
+    elif core_len < min_length:
+        blueprint['vstrands'][num2id[helix_num]]['stap_colors'][strand_id][1] = 16776960  # Yellow when the sequence is too short. Only for short limit, ssDNA region is excluded.
     elif total_len > max_length:
         blueprint['vstrands'][num2id[helix_num]]['stap_colors'][strand_id][1] = 16711935  # Magenta when the sequence is too long.
     elif max_count >= optimal_seed_len - 1 :
@@ -274,15 +275,16 @@ def autobreak_search(input_seq: str, min_length=args.min, max_length=args.max, a
         for pattern in patterns:
             remaining_seq = pattern['remaining']
             
-            # If the remaining sequence is less than min_length, consider this pattern completed
-            if len(remaining_seq) < min_length:
+            # If the remaining sequence (excluding single strand region) is less than min_length, consider this pattern completed
+            core_remaining_seq = remaining_seq.strip("^")
+            if len(core_remaining_seq) < min_length:
                 final_patterns.append(pattern)
                 continue
             
             # If there's no valid split for this pattern, also consider it completed
             valid_split_found = False
             for k in range(min_length, min(max_length + 1, len(remaining_seq) - 6)):
-                if k + distance - 1 < len(remaining_seq) and remaining_seq[k - distance] == remaining_seq[k + distance - 1] and score_seq(remaining_seq[:k]) and score_seq(remaining_seq[k:]) and len(remaining_seq[k:]) >= min_length:
+                if k + distance - 1 < len(remaining_seq) and remaining_seq[k - distance] == remaining_seq[k + distance - 1] and score_seq(remaining_seq[:k]) and score_seq(remaining_seq[k:]) and len(remaining_seq[k:].strip("^")) >= min_length:
                     valid_split_found = True
                     split_length = pattern['split_length'] + [k]
                     score = pattern['score'] + score_seq(remaining_seq[:k])
