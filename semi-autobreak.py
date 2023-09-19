@@ -9,12 +9,26 @@ except ImportError as e:
     print(f"Please install it by running 'pip install {missing_module}' and then run the script again.")
     exit()
 
+def get_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('input_file', type=str, help='The input JSON file path for cadnano2 design.')
+    parser.add_argument('-max', '-long', '-l', dest='max', type=int, default=80, help='20 by default. Upper limit of staple length. Colored magenta if exceeds')
+    parser.add_argument('-min', '-short', '-s', dest='min', type=int, default=20, help='80 by default. Lower limit of staple length. Colored yellow if the staple is shorter than this number')
+    parser.add_argument('-optimal', '-opt', '-o', dest='optimal' , type=int, default=14, help='14 by default. Requirement of minimum continuous hybridization length per staple. Satisifying staples are colored blue')
+    parser.add_argument('-acceptable', '-accept', '-a', dest='acceptable', type=int, default=12, help='12 by default. Loosen requirement of minimum continuous hybridization length per staple. Satisfying staples are colored cyan')
+    parser.add_argument('-manual', '-m', dest='manual', action='store_true', help='Only staple color is updated and autobreak is skipped. The same behaviour as seeding-domain-tracer')
+    parser.add_argument('-connect', '-reconnect' '-c', dest='connect', action='store_true', help='Reconnect all break point of staples, by halting autobreak script')
+    parser.add_argument('-color', '-colour' '-intermediate' '-i', dest='color', action='store_true', help='Leave intermediate JSON file displaying autobroken staples in green')
+    parser.add_argument('-limit', dest='limit', type=int, default=1000, help='Limitter to prevent unlimited calculation.')
+    return parser.parse_args()
+
+
 max_length = 80    # configure as you like, directly in the script or optional argument '-max'
 min_length = 20    # configure as you like, directly in the script or optional argument '-min'
 optimal_seed_len = 14    # configure as you like, directly in the script or optional argument '-optimal'
 acceptable_seed_len = 12    # configure as you like, directly in the script or optional argument '-acceptable'
 
-def trace_domain(blueprint: dict, helix_num: int, pos_num: int, strand_id: int, report_path: str, max_length=max_length, min_length=min_length, optimal_seed_len=optimal_seed_len, acceptable_seed_len=acceptable_seed_len) -> tuple [dict, list]:
+def trace_domain(blueprint: dict, helix_num: int, pos_num: int, strand_id: int, report_path: str, max_length, min_length, optimal_seed_len, acceptable_seed_len) -> tuple [dict, list]:
     # Change color of specific helices according to domain composition.
     tracer_pos = pos_num
     tracer_hel = helix_num
@@ -109,18 +123,6 @@ def crossover_counter(blueprint: dict, report_path: str, short_domain_list: list
                     filled_len -= 1
             summary = summary + f"{count},{count_scaf},{count_stap},{filled_len},{short_domain_list[i]}\n"
     write_report(report_path, summary)
-
-def get_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('input_file', type=str, help='The input JSON file path for cadnano2 design.')
-    parser.add_argument('-max', '-long', '-l', dest='max', type=int, help='20 by default. Upper limit of staple length. Colored magenta if exceeds')
-    parser.add_argument('-min', '-short', '-s', dest='min', type=int, help='80 by default. Lower limit of staple length. Colored yellow if the staple is shorter than this number')
-    parser.add_argument('-optimal', '-opt', '-o', dest='optimal' , type=int, help='14 by default. Requirement of minimum continuous hybridization length per staple. Satisifying staples are colored blue')
-    parser.add_argument('-acceptable', '-accept', '-a', dest='acceptable', type=int, help='12 by default. Loosen requirement of minimum continuous hybridization length per staple. Satisfying staples are colored cyan')
-    parser.add_argument('-manual', '-m', dest='manual', action='store_true', help='Only staple color is updated and autobreak is skipped. The same behaviour as seeding-domain-tracer')
-    parser.add_argument('-connect', '-reconnect' '-c', dest='connect', action='store_true', help='Reconnect all break point of staples, by halting autobreak script')
-    parser.add_argument('-color', '-colour' '-intermediate' '-i', dest='color', action='store_true', help='Leave intermediate JSON file displaying autobroken staples in green')
-    return parser.parse_args()
 
 def load_json_file(filename: str) -> dict: 
     try:
@@ -263,7 +265,7 @@ def autobreak_search(input_seq: str, min_length=min_length, max_length=max_lengt
         print("skipped as no patterns met given criteria. manual breaking required")
     return highest_score_pattern['split_length'][:-1]
 
-def autobreak(blueprint: dict, report_path: str, min_length, max_length, optimal_seed_len, acceptable_seed_len, color=False) -> dict:
+def autobreak(blueprint: dict, report_path: str, min_length, max_length, optimal_seed_len, acceptable_seed_len, limit, color=False) -> dict:
     # get csv as list
     with open(report_path, 'r') as f:
         reader = csv.reader(f)
@@ -273,17 +275,20 @@ def autobreak(blueprint: dict, report_path: str, min_length, max_length, optimal
     # for each line, get sequence and split it
     for line in csv_list:
         start, _, sequence, _ = line
-        print("autobreaking staple: " + str(start) + " ...")
-        split_length = autobreak_search(sequence, max_length=max_length, min_length=min_length, optimal_seed_len=optimal_seed_len, acceptable_seed_len=acceptable_seed_len)
-        hel, pos = start.split('[')
-        hel = int(hel)
-        pos = int(pos[:-1])
-        if split_length != []:
-            for i in range(len(blueprint['vstrands'][hel]['stap_colors'])):
-                if blueprint['vstrands'][hel]['stap_colors'][i][0] == pos:
-                    blueprint['vstrands'][hel]['stap_colors'][i][1] = 65280
-            for i in range(len(split_length)):
-                blueprint, hel, pos = break_3_end(blueprint, hel, pos, split_length[i])
+        if len(sequence) <= limit:
+            print("autobreaking staple: " + str(start) + " len=" + str(len(sequence)) + "...")
+            split_length = autobreak_search(sequence, max_length=max_length, min_length=min_length, optimal_seed_len=optimal_seed_len, acceptable_seed_len=acceptable_seed_len)
+            hel, pos = start.split('[')
+            hel = int(hel)
+            pos = int(pos[:-1])
+            if split_length != []:
+                for i in range(len(blueprint['vstrands'][hel]['stap_colors'])):
+                    if blueprint['vstrands'][hel]['stap_colors'][i][0] == pos:
+                        blueprint['vstrands'][hel]['stap_colors'][i][1] = 65280
+                for i in range(len(split_length)):
+                    blueprint, hel, pos = break_3_end(blueprint, hel, pos, split_length[i])
+        else:
+            print("autobreaking staple: " + str(start) + " len=" + str(len(sequence)) + " was skipped due to length limit=" + str(limit))           
     if color:   # if intermediate file kept or unsaved.
         write_json_file('output_autobreak.json', blueprint)
     return blueprint
@@ -355,16 +360,12 @@ def reconnect_breaks(blueprint: dict, hel_num: int, pos_num: int) -> dict:
     return blueprint
 
 args = get_args()
-if args.min:
-    min_length = args.min
-if args.max:
-    max_length = args.max
+min_length = args.min
+max_length = args.max
 if min_length > max_length:
     raise ValueError(f'max length {max_length} shuold be larger than min length {min_length}') 
-if args.optimal:
-    optimal_seed_len = args.optimal
-if args.acceptable:
-    acceptable_seed_len = args.acceptable
+optimal_seed_len = args.optimal
+acceptable_seed_len = args.acceptable
 if optimal_seed_len < acceptable_seed_len:
     raise ValueError(f'optimal seeding length {optimal_seed_len} shuold be larger than acceptable seed length {acceptable_seed_len}') 
 
@@ -383,7 +384,7 @@ if blueprint:
         short_domain_list = short_domain_counter(count_list,short_domain_count)
         crossover_counter(blueprint, 'crossover_report_autoconnect.csv', short_domain_list)
         if not args.connect:
-            blueprint = autobreak(blueprint,'domain_report_autoconnect.csv', max_length=max_length, min_length=min_length, optimal_seed_len=optimal_seed_len, acceptable_seed_len=acceptable_seed_len, color=args.color)
+            blueprint = autobreak(blueprint,'domain_report_autoconnect.csv', max_length=max_length, min_length=min_length, optimal_seed_len=optimal_seed_len, acceptable_seed_len=acceptable_seed_len, color=args.color, limit=args.limit)
             # color change again and update report
             count_list = [0] * len(blueprint['vstrands'])
             short_domain_count = color_change(blueprint,'domain_report.csv', 'output.json', max_length=max_length, min_length=min_length, optimal_seed_len=optimal_seed_len, acceptable_seed_len=acceptable_seed_len) # overwrite colored blueprint
