@@ -15,10 +15,10 @@ _See the reference at the bottom for the theoretical/experimental background abo
 
 ### Colour Code
 - **Staples without ends:** These remain uncoloured, appearing as the default dark grey.
-- **Staples with a length above 80 nt:** These are coloured magenta. (Adjust according to your policy by modifying length_max in trace_domain().)
-- **Staples with a length below 20 nt:** These are coloured yellow. (Adjust according to your policy by modifying length_min in trace_domain().)
-- **Staples with ≥ 14 nt continuous hybridisation to the scaffold:** These are coloured blue.
-- **Staples with ≥ 12 nt continuous hybridisation to the scaffold:** These are coloured cyan.
+- **Staples with a length above 80 nt:** These are coloured magenta. (Adjust the number according to your policy -max option.)
+- **Staples with a length below 18 nt (excluding ssDNA region):** These are coloured yellow. (Adjust the number according to your policy -min option.)
+- **Staples with ≥ 14 nt continuous hybridisation to the scaffold:** These are coloured blue. (Adjust the number according to your policy -optimal option.)
+- **Staples with ≥ 12 nt continuous hybridisation to the scaffold:** These are coloured cyan. (Adjust the number according to your policy -acceptable option.)
 - **Staples without seeding domains:** These are coloured red.
 
 ### How to Use
