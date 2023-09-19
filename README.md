@@ -36,8 +36,8 @@ The script will generate several output files: `output.json`, `crossover_report.
 
 ### Arguments
 - `[File path]`: Mandatory argument. Input path to cadnano json file.
-- `-max [number]`: 80 by default. Lower limit of staple length. Coloured yellow if the staple is shorter than this number.
-- `-min [number]`: 20 by default. Upper limit of staple length. Coloured magenta if exceeded.
+- `-min [number]`: 18 by default. Lower limit of staple length excluding ssDNA region. Coloured yellow if the staple is shorter than this number.
+- `-max [number]`: 80 by default. Upper limit of staple length. Coloured magenta if exceeded.
 - `-optimal [number]`: 14 by default. Requirement for minimum continuous hybridisation length per staple. Staples meeting this requirement are coloured blue.
 - `-acceptable [number]`: 12 by default. A more lenient requirement for minimum continuous hybridisation length per staple. Staples that meet this requirement are coloured cyan.
 - `-manual`: Only the staple colour is updated and autobreak is skipped. This behaviour is the same as the seeding-domain-tracer.
