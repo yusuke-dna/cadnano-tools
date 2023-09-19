@@ -19,8 +19,9 @@ def get_args():
     parser.add_argument('-manual', '-m', dest='manual', action='store_true', help='Only staple color is updated and autobreak is skipped. The same behaviour as seeding-domain-tracer')
     parser.add_argument('-connect', '-reconnect' '-c', dest='connect', action='store_true', help='Reconnect all break point of staples, by halting autobreak script')
     parser.add_argument('-color', '-colour' '-intermediate' '-i', dest='color', action='store_true', help='Leave intermediate JSON file displaying autobroken staples in green')
-    parser.add_argument('-limit', '-threshold', '-t', dest='limit', type=int, default=1000, help='Limiter to prevent combinatorial explosion. The threshold to apply filter breaking pattern variation.')
-    parser.add_argument('-filter', '-f', dest='filter', type=int, default=100, help='Filter to prevent combinatorial explosion. The pattern exceeding the limit is filtered to this value')
+    parser.add_argument('-limit', '-threshold', '-t', dest='limit', type=int, default=5000, help='5000 by default. Limiter to prevent combinatorial explosion. The threshold to apply filter (below) breaking pattern variation. For low restriction design (long average domain length), wight (**(optimal_seed_len/average_domain_len)) is applied to reduce wasteful calculation cost, resulting in no siginficant difference')
+    parser.add_argument('-filter', '-f', dest='filter', type=int, default=100, help='100 by default. Filter to prevent combinatorial explosion. The pattern exceeding threshold (above) will be filtered to this number')
+    parser.add_argument('-distance', '-d', dest='distance', type=int, default=3, help='3 by default. Distance from 5-/3-end of staple and staple crossover (not considering scaffold crossover)')   
     return parser.parse_args()
 
 args = get_args()
@@ -33,7 +34,7 @@ acceptable_seed_len = args.acceptable
 if optimal_seed_len < acceptable_seed_len:
     raise ValueError(f'optimal seeding length {optimal_seed_len} shuold be larger than acceptable seed length {acceptable_seed_len}') 
 
-def trace_domain(blueprint: dict, helix_num: int, pos_num: int, strand_id: int, report_path: str, max_length, min_length, optimal_seed_len, acceptable_seed_len) -> tuple [dict, list]:
+def trace_domain(blueprint: dict, helix_num: int, pos_num: int, strand_id: int, report_path: str, max_length=args.max, min_length=args.min, optimal_seed_len=args.optimal, acceptable_seed_len=args.acceptable) -> tuple [dict, list]:
     # Change color of specific helices according to domain composition.
     tracer_pos = pos_num
     tracer_hel = helix_num
@@ -147,14 +148,14 @@ def write_report(filename: str, content: str):
     with open(filename, 'a') as f:
         f.write(content + '\n')
 
-def color_change(blueprint: dict, filename: str, output_file: str, max_length: int, min_length: int, optimal_seed_len: int, acceptable_seed_len: int) -> list: 
+def color_change(blueprint: dict, filename: str, output_file: str) -> list: 
     short_domain_list = []
     with open(filename, 'w') as f:
         f.write('start,end,domains,length\n') # Initialize report file with empty content
     for helix_id, helix in enumerate(blueprint['vstrands']):
         for strand_id, strand in enumerate(helix['stap_colors']):
             position = strand[0]
-            blueprint, new_short_domains = trace_domain(blueprint, helix_id, position, strand_id, filename, max_length=max_length, min_length=min_length, optimal_seed_len=optimal_seed_len, acceptable_seed_len=acceptable_seed_len)
+            blueprint, new_short_domains = trace_domain(blueprint, helix_id, position, strand_id, filename)
             short_domain_list.extend(new_short_domains)
     write_json_file(output_file, blueprint)
     return short_domain_list
@@ -202,7 +203,22 @@ def short_domain_counter(count_list,short_domain_list) -> list:
         count_list[helix_id] += 1
     return count_list
 
-def autobreak_search(input_seq: str, min_length=args.min, max_length=args.max, acceptable_seed_len=args.acceptable, optimal_seed_len=args.optimal, limit_num=args.limit, filter_num=args.filter) -> list:
+def autobreak_search(input_seq: str, min_length=args.min, max_length=args.max, acceptable_seed_len=args.acceptable, optimal_seed_len=args.optimal, limit_num=args.limit, filter_num=args.filter, distance=args.distance) -> list:
+    char_counts = {}
+    middle_seq = input_seq.strip('^!')
+    i = 0
+    j = 0
+    char_counts = {j: 0}
+    char = 'a'
+    while i < len(middle_seq):
+        if middle_seq[i] == char:
+            char_counts[j] += 1
+        else:
+            char = middle_seq[i]
+            j += 1
+            char_counts.update({j: 1})
+        i += 1
+    average_domain_length = sum(char_counts.values()) / (j + 1)
     def score_seq(sequence: str) -> float:  # at present the location of seeding domain is not considered
         seeding_domain = 0
         count = 0
@@ -220,18 +236,15 @@ def autobreak_search(input_seq: str, min_length=args.min, max_length=args.max, a
             if count >= optimal_seed_len or seeding_domain == 1:
                 seeding_domain = 1
             elif count >= acceptable_seed_len:
-                seeding_domain = 0.3        # 0.3 fold penalty to acceptable strand  
+                seeding_domain = 0.3        # 0.3 fold penalty to acceptable strand
         return seeding_domain * ( 2 - (len(sequence) - min_length) / (max_length - min_length) )    # length penalty: Max length gets half score than min length. Besides, shorter split gives more number of split strands each of them has score.
 
     patterns = [{'split_length': [], 'score': 0, 'remaining': input_seq}]
     completed = False
     final_patterns = []
-    generation = 0
 
     while not completed:
-        generation += 1
         new_patterns = []
-        print(f'found {len(patterns)} patterns...')
         for pattern in patterns:
             remaining_seq = pattern['remaining']
             
@@ -243,7 +256,7 @@ def autobreak_search(input_seq: str, min_length=args.min, max_length=args.max, a
             # If there's no valid split for this pattern, also consider it completed
             valid_split_found = False
             for k in range(min_length, min(max_length + 1, len(remaining_seq) - 6)):
-                if k + 3 < len(remaining_seq) and remaining_seq[k - 3] == remaining_seq[k + 3] and score_seq(remaining_seq[:k]) and score_seq(remaining_seq[k:]) and len(remaining_seq[k:]) >= min_length:
+                if k + distance < len(remaining_seq) and remaining_seq[k - distance] == remaining_seq[k + distance] and score_seq(remaining_seq[:k]) and score_seq(remaining_seq[k:]) and len(remaining_seq[k:]) >= min_length:
                     valid_split_found = True
                     split_length = pattern['split_length'] + [k]
                     score = pattern['score'] + score_seq(remaining_seq[:k])
@@ -251,15 +264,17 @@ def autobreak_search(input_seq: str, min_length=args.min, max_length=args.max, a
                     
             if not valid_split_found:
                 final_patterns.append(pattern)
-
+        weight_limit = int(limit_num ** (min(1, optimal_seed_len/average_domain_length))) # if the strand is continuous sequence, apply wight to limit to reduce wasteful calculation
         if not new_patterns:  # No new patterns found in this iteration
             completed = True
-        elif len(new_patterns) > limit_num:  # for each cycle, if the pattern exceed limit, filtered to top 1000th score, with risk of listing local optimum.
-            print(f'calculation is filtered to top 100 patterns as pattern limit reached: {len(new_patterns)}/{limit_num}')
+        elif len(new_patterns) > weight_limit:  # for each cycle, if the pattern exceed limit, filtered to top 1000th score, with risk of listing local optimum.
+            print(f'calculation is filtered to top {filter_num} patterns as pattern limit reached: {len(new_patterns)}/{weight_limit}')
+            print(f'found {len(final_patterns)} breaking patterns and continue searching from rest {len(new_patterns)} patterns ...')
             top_scored_patterns = sorted(new_patterns, key=lambda x: x['score'], reverse=True)[:filter_num]
             new_patterns = top_scored_patterns
+        else:
+            print(f'found {len(final_patterns)} breaking patterns and continue searching from rest {len(new_patterns)} patterns ...')
         patterns = new_patterns
-    print(f'found {len(patterns)} patterns...')
 
     # Filtering out patterns with 'remaining' longer than max_length, add score from their individual remaining sequence
     final_patterns = [pattern for pattern in final_patterns if len(pattern['remaining']) <= max_length]
@@ -279,7 +294,7 @@ def autobreak_search(input_seq: str, min_length=args.min, max_length=args.max, a
         print("skipped as no patterns met given criteria. manual breaking required")
     return highest_score_pattern['split_length'][:-1]
 
-def autobreak(blueprint: dict, report_path: str, min_length, max_length, optimal_seed_len, acceptable_seed_len, limit_num, filter_num, color=False) -> dict:
+def autobreak(blueprint: dict, report_path: str, color=False) -> dict:
     # get csv as list
     with open(report_path, 'r') as f:
         reader = csv.reader(f)
@@ -290,7 +305,7 @@ def autobreak(blueprint: dict, report_path: str, min_length, max_length, optimal
     for line in csv_list:
         start, _, sequence, _ = line
         print("autobreaking staple: " + str(start) + " len=" + str(len(sequence)) + "...")
-        split_length = autobreak_search(sequence, max_length=max_length, min_length=min_length, optimal_seed_len=optimal_seed_len, acceptable_seed_len=acceptable_seed_len, limit_num=limit_num, filter_num=filter_num)
+        split_length = autobreak_search(sequence)
         hel, pos = start.split('[')
         hel = int(hel)
         pos = int(pos[:-1])
@@ -390,21 +405,21 @@ blueprint = load_json_file(args.input_file)
 if blueprint:
     if args.manual:
         count_list = [0] * len(blueprint['vstrands'])
-        short_domain_count = color_change(blueprint,'domain_report.csv', 'output.json', max_length=max_length, min_length=min_length, optimal_seed_len=optimal_seed_len, acceptable_seed_len=acceptable_seed_len)
+        short_domain_count = color_change(blueprint,'domain_report.csv', 'output.json')
         short_domain_list = short_domain_counter(count_list,short_domain_count)
         crossover_counter(blueprint, 'crossover_report.csv', short_domain_list)
     else:
         # below is for autobreak
         blueprint = autoconnect(blueprint)
         count_list = [0] * len(blueprint['vstrands'])
-        short_domain_count = color_change(blueprint,'domain_report_autoconnect.csv', 'output_autoconnect.json', max_length=max_length, min_length=min_length, optimal_seed_len=optimal_seed_len, acceptable_seed_len=acceptable_seed_len)
+        short_domain_count = color_change(blueprint,'domain_report_autoconnect.csv', 'output_autoconnect.json')
         short_domain_list = short_domain_counter(count_list,short_domain_count)
         crossover_counter(blueprint, 'crossover_report_autoconnect.csv', short_domain_list)
         if not args.connect:
-            blueprint = autobreak(blueprint,'domain_report_autoconnect.csv', max_length=max_length, min_length=min_length, optimal_seed_len=optimal_seed_len, acceptable_seed_len=acceptable_seed_len, color=args.color, limit_num=args.limit, filter_num=args.filter)
+            blueprint = autobreak(blueprint,'domain_report_autoconnect.csv', color=args.color)
             # color change again and update report
             count_list = [0] * len(blueprint['vstrands'])
-            short_domain_count = color_change(blueprint,'domain_report.csv', 'output.json', max_length=max_length, min_length=min_length, optimal_seed_len=optimal_seed_len, acceptable_seed_len=acceptable_seed_len) # overwrite colored blueprint
+            short_domain_count = color_change(blueprint,'domain_report.csv', 'output.json') # overwrite colored blueprint
             short_domain_list = short_domain_counter(count_list,short_domain_count)
             crossover_counter(blueprint, 'crossover_report.csv', short_domain_list)
             # Cleaning directory
