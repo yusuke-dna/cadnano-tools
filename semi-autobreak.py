@@ -19,7 +19,8 @@ def get_args():
     parser.add_argument('-manual', '-m', dest='manual', action='store_true', help='Only staple color is updated and autobreak is skipped. The same behaviour as seeding-domain-tracer')
     parser.add_argument('-connect', '-reconnect' '-c', dest='connect', action='store_true', help='Reconnect all break point of staples, by halting autobreak script')
     parser.add_argument('-color', '-colour' '-intermediate' '-i', dest='color', action='store_true', help='Leave intermediate JSON file displaying autobroken staples in green')
-    parser.add_argument('-limit', dest='limit', type=int, default=1000, help='Limitter to prevent unlimited calculation.')
+    parser.add_argument('-limit', '-threshold', '-t', dest='limit', type=int, default=1000, help='Limitter to prevent combinatorial explosion. The threshold to filter breaking pattern variation.')
+    parser.add_argument('-filter', '-f', dest='filter', type=int, default=100, help='Limitter to prevent combinatorial explosion. The pattern exceeding the limit is filtered to this value')
     return parser.parse_args()
 
 args = get_args()
@@ -82,7 +83,9 @@ def trace_domain(blueprint: dict, helix_num: int, pos_num: int, strand_id: int, 
         hel_history.append(tracer_hel)
     end = str(last_tracer_hel) + '[' + str(last_tracer_pos) + '],'
     total_len = len(domain_string)
-    if total_len < min_length:
+    if blueprint['vstrands'][helix_num]['stap_colors'][strand_id][1] == 0:         # black is left unprocessed.
+        pass
+    elif total_len < min_length:
         blueprint['vstrands'][helix_num]['stap_colors'][strand_id][1] = 16776960  # Yellow when the sequence is too short.
     elif total_len > max_length:
         blueprint['vstrands'][helix_num]['stap_colors'][strand_id][1] = 16711935  # Magenta when the sequence is too long.
@@ -199,7 +202,7 @@ def short_domain_counter(count_list,short_domain_list) -> list:
         count_list[helix_id] += 1
     return count_list
 
-def autobreak_search(input_seq: str, min_length=args.min, max_length=args.max, acceptable_seed_len=args.acceptable, optimal_seed_len=args.optimal) -> list:
+def autobreak_search(input_seq: str, min_length=args.min, max_length=args.max, acceptable_seed_len=args.acceptable, optimal_seed_len=args.optimal, limit_num=args.limit, filter_num=args.filter) -> list:
     def score_seq(sequence: str) -> float:  # at present the location of seeding domain is not considered
         seeding_domain = 0
         count = 0
@@ -218,14 +221,17 @@ def autobreak_search(input_seq: str, min_length=args.min, max_length=args.max, a
                 seeding_domain = 1
             elif count >= acceptable_seed_len:
                 seeding_domain = 0.3        # 0.3 fold penalty to acceptable strand  
-        return seeding_domain * ( 2 - (len(sequence) - min_length) / (max_length - min_length) )    # length penalty: Max length get half score than min length. Besides, shorter split gives more number of split strands each of them has score.
+        return seeding_domain * ( 2 - (len(sequence) - min_length) / (max_length - min_length) )    # length penalty: Max length gets half score than min length. Besides, shorter split gives more number of split strands each of them has score.
 
     patterns = [{'split_length': [], 'score': 0, 'remaining': input_seq}]
     completed = False
     final_patterns = []
+    generation = 0
 
     while not completed:
+        generation += 1
         new_patterns = []
+        print(f'found {len(patterns)} patterns...')
         for pattern in patterns:
             remaining_seq = pattern['remaining']
             
@@ -240,16 +246,20 @@ def autobreak_search(input_seq: str, min_length=args.min, max_length=args.max, a
                 if k + 3 < len(remaining_seq) and remaining_seq[k - 3] == remaining_seq[k + 3] and score_seq(remaining_seq[:k]) and score_seq(remaining_seq[k:]) and len(remaining_seq[k:]) >= min_length:
                     valid_split_found = True
                     split_length = pattern['split_length'] + [k]
-                    score = pattern['score'] + score_seq(remaining_seq[:k]) # shorter split has higher score. Minimum 0.5.
+                    score = pattern['score'] + score_seq(remaining_seq[:k])
                     new_patterns.append({'split_length': split_length, 'score': score, 'remaining': remaining_seq[k:]})
                     
             if not valid_split_found:
                 final_patterns.append(pattern)
-                    
+
         if not new_patterns:  # No new patterns found in this iteration
             completed = True
-            
+        elif len(new_patterns) > limit_num:  # for each cycle, if the pattern exceed limit, filtered to top 1000th score, with risk of listing local optimum.
+            print(f'calculation is filtered to top 100 patterns as pattern limit reached: {len(new_patterns)}/{limit_num}')
+            top_scored_patterns = sorted(new_patterns, key=lambda x: x['score'], reverse=True)[:filter_num]
+            new_patterns = top_scored_patterns
         patterns = new_patterns
+    print(f'found {len(patterns)} patterns...')
 
     # Filtering out patterns with 'remaining' longer than max_length, add score from their individual remaining sequence
     final_patterns = [pattern for pattern in final_patterns if len(pattern['remaining']) <= max_length]
@@ -269,7 +279,7 @@ def autobreak_search(input_seq: str, min_length=args.min, max_length=args.max, a
         print("skipped as no patterns met given criteria. manual breaking required")
     return highest_score_pattern['split_length'][:-1]
 
-def autobreak(blueprint: dict, report_path: str, min_length, max_length, optimal_seed_len, acceptable_seed_len, limit, color=False) -> dict:
+def autobreak(blueprint: dict, report_path: str, min_length, max_length, optimal_seed_len, acceptable_seed_len, limit_num, filter_num, color=False) -> dict:
     # get csv as list
     with open(report_path, 'r') as f:
         reader = csv.reader(f)
@@ -279,20 +289,17 @@ def autobreak(blueprint: dict, report_path: str, min_length, max_length, optimal
     # for each line, get sequence and split it
     for line in csv_list:
         start, _, sequence, _ = line
-        if len(sequence) <= limit:
-            print("autobreaking staple: " + str(start) + " len=" + str(len(sequence)) + "...")
-            split_length = autobreak_search(sequence, max_length=max_length, min_length=min_length, optimal_seed_len=optimal_seed_len, acceptable_seed_len=acceptable_seed_len)
-            hel, pos = start.split('[')
-            hel = int(hel)
-            pos = int(pos[:-1])
-            if split_length != []:
-                for i in range(len(blueprint['vstrands'][hel]['stap_colors'])):
-                    if blueprint['vstrands'][hel]['stap_colors'][i][0] == pos:
-                        blueprint['vstrands'][hel]['stap_colors'][i][1] = 65280
-                for i in range(len(split_length)):
-                    blueprint, hel, pos = break_3_end(blueprint, hel, pos, split_length[i])
-        else:
-            print("autobreaking staple: " + str(start) + " len=" + str(len(sequence)) + " was skipped due to length limit=" + str(limit))           
+        print("autobreaking staple: " + str(start) + " len=" + str(len(sequence)) + "...")
+        split_length = autobreak_search(sequence, max_length=max_length, min_length=min_length, optimal_seed_len=optimal_seed_len, acceptable_seed_len=acceptable_seed_len, limit_num=limit_num, filter_num=filter_num)
+        hel, pos = start.split('[')
+        hel = int(hel)
+        pos = int(pos[:-1])
+        if split_length != []:
+            for i in range(len(blueprint['vstrands'][hel]['stap_colors'])):
+                if blueprint['vstrands'][hel]['stap_colors'][i][0] == pos:
+                    blueprint['vstrands'][hel]['stap_colors'][i][1] = 65280
+            for i in range(len(split_length)):
+                blueprint, hel, pos = break_3_end(blueprint, hel, pos, split_length[i])
     if color:   # if intermediate file kept or unsaved.
         write_json_file('output_autobreak.json', blueprint)
     return blueprint
@@ -335,8 +342,18 @@ def reconnect_breaks(blueprint: dict, hel_num: int, pos_num: int) -> dict:
     tracer_hel = hel_num
     last_tracer_pos = tracer_pos
     last_tracer_hel = tracer_hel
-    start_hel = tracer_hel
-    start_pos = tracer_pos
+    # reverse tracing to 5'end to avoid loop creation
+    while not(blueprint['vstrands'][last_tracer_hel]['stap'][last_tracer_pos][0] == -1 and blueprint['vstrands'][last_tracer_hel]['stap'][last_tracer_pos][1] == -1):
+        last_tracer_hel = tracer_hel
+        last_tracer_pos = tracer_pos
+        tracer_hel = blueprint['vstrands'][last_tracer_hel]['stap'][last_tracer_pos][0]
+        tracer_pos = blueprint['vstrands'][last_tracer_hel]['stap'][last_tracer_pos][1]
+    start_hel = last_tracer_hel
+    start_pos = last_tracer_pos
+    tracer_pos = pos_num
+    tracer_hel = hel_num
+    last_tracer_pos = tracer_pos
+    last_tracer_hel = tracer_hel
     end_flag = False
     while not end_flag:
         while tracer_pos != -1:
@@ -347,18 +364,24 @@ def reconnect_breaks(blueprint: dict, hel_num: int, pos_num: int) -> dict:
         # connect break if next position is filled
         direction = last_tracer_pos - blueprint['vstrands'][last_tracer_hel]['stap'][last_tracer_pos][1]    # if pos num of 3' is larger, +1, if smaller, -1
         if blueprint['vstrands'][last_tracer_hel]['stap'][last_tracer_pos + direction][0] == -1 and blueprint['vstrands'][last_tracer_hel]['stap'][last_tracer_pos + direction][1] == -1 and \
-           blueprint['vstrands'][last_tracer_hel]['stap'][last_tracer_pos + direction][2] != -1 and blueprint['vstrands'][last_tracer_hel]['stap'][last_tracer_pos + direction][3] != -1 and \
-           not (last_tracer_hel == start_hel and last_tracer_pos + direction == start_pos) :    # exclude circular connection
-            blueprint['vstrands'][last_tracer_hel]['stap'][last_tracer_pos][2] = last_tracer_hel
-            blueprint['vstrands'][last_tracer_hel]['stap'][last_tracer_pos][3] = last_tracer_pos + direction
-            blueprint['vstrands'][last_tracer_hel]['stap'][last_tracer_pos + direction][0] = last_tracer_hel
-            blueprint['vstrands'][last_tracer_hel]['stap'][last_tracer_pos + direction][1] = last_tracer_pos
-            print("reconnected strand: " + str(start_hel) + "[" + str(start_pos) + "] at " + str(last_tracer_hel) + "[" + str(last_tracer_pos + direction) + "]")
-            # remove color
-            for i in range(len(blueprint['vstrands'][last_tracer_hel]['stap_colors'])):
-                if blueprint['vstrands'][last_tracer_hel]['stap_colors'][i][0] == last_tracer_pos + direction:
-                    blueprint['vstrands'][last_tracer_hel]['stap_colors'].pop(i)
-                    break
+           blueprint['vstrands'][last_tracer_hel]['stap'][last_tracer_pos + direction][2] != -1 and blueprint['vstrands'][last_tracer_hel]['stap'][last_tracer_pos + direction][3] != -1:
+            if not (last_tracer_hel == start_hel and last_tracer_pos + direction == start_pos) :    # exclude circular connection
+                # fill gap and remove the color of connected staple, only when the 3' strand is not black.
+                for i in range(len(blueprint['vstrands'][last_tracer_hel]['stap_colors'])):
+                    if blueprint['vstrands'][last_tracer_hel]['stap_colors'][i][0] == last_tracer_pos + direction and blueprint['vstrands'][last_tracer_hel]['stap_colors'][i][1] == 0: # Black strand is left intact, for manual editing.
+                        end_flag = True
+                        print("Strand: " + str(start_hel) + "[" + str(start_pos) + "] was left broken as specified")
+                    elif blueprint['vstrands'][last_tracer_hel]['stap_colors'][i][0] == last_tracer_pos + direction:
+                        blueprint['vstrands'][last_tracer_hel]['stap'][last_tracer_pos][2] = last_tracer_hel
+                        blueprint['vstrands'][last_tracer_hel]['stap'][last_tracer_pos][3] = last_tracer_pos + direction
+                        blueprint['vstrands'][last_tracer_hel]['stap'][last_tracer_pos + direction][0] = last_tracer_hel
+                        blueprint['vstrands'][last_tracer_hel]['stap'][last_tracer_pos + direction][1] = last_tracer_pos
+                        print("reconnected strand: " + str(start_hel) + "[" + str(start_pos) + "] at " + str(last_tracer_hel) + "[" + str(last_tracer_pos + direction) + "]")
+                        blueprint['vstrands'][last_tracer_hel]['stap_colors'].pop(i)
+                        break
+            else:
+                print("Strand: " + str(start_hel) + "[" + str(start_pos) + "] was left broken to avold loop")
+                end_flag = True              
         else:
             end_flag = True
     return blueprint
@@ -378,7 +401,7 @@ if blueprint:
         short_domain_list = short_domain_counter(count_list,short_domain_count)
         crossover_counter(blueprint, 'crossover_report_autoconnect.csv', short_domain_list)
         if not args.connect:
-            blueprint = autobreak(blueprint,'domain_report_autoconnect.csv', max_length=max_length, min_length=min_length, optimal_seed_len=optimal_seed_len, acceptable_seed_len=acceptable_seed_len, color=args.color, limit=args.limit)
+            blueprint = autobreak(blueprint,'domain_report_autoconnect.csv', max_length=max_length, min_length=min_length, optimal_seed_len=optimal_seed_len, acceptable_seed_len=acceptable_seed_len, color=args.color, limit_num=args.limit, filter_num=args.filter)
             # color change again and update report
             count_list = [0] * len(blueprint['vstrands'])
             short_domain_count = color_change(blueprint,'domain_report.csv', 'output.json', max_length=max_length, min_length=min_length, optimal_seed_len=optimal_seed_len, acceptable_seed_len=acceptable_seed_len) # overwrite colored blueprint
