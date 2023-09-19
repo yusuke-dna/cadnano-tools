@@ -9,7 +9,7 @@ A Python script that supports users' semi-automatic optimisation of the breaking
 - All ends of staples are at least three base away from staple crossover. (configurable by optional arguments `-distance`)
 - The length of all split staples should be within the specified range, ≥ 20 and ≤ 80 by default. (configurable by optional arguments `-min` and `-max`)
 - The most preferable breaking point is selected from all possible combinations based on its `score`. The score represents the quality of split staples. A shorter staple is preferable (minimum length staple has twice the score as maximum length staple), a higher split number is preferable (score is the sum of individual split staple scores), and a seeding domain above 13 is more preferable than one above 11 (1:0.3).
-- Calculation is limited up to 10 000 patterns per cycle. If exceed, top 100 (by score) patterns are filtered to next breaking point search. (configurable by optional arguments `-limit` and `-filter`) Note that a weight applied to reduce calculation cost for staples with low divesity.
+- Calculation is limited up to 5 000 patterns per cycle. If exceed, top 100 (by score) patterns are filtered to next breaking point search. (configurable by optional arguments `-limit` and `-filter`) Note that a weight is applied to both to reduce calculation cost for staples with low sequence divesity.
   
 _See the reference at the bottom for the theoretical/experimental background about `seeding domain`._
 
@@ -31,7 +31,7 @@ $ python3 semi-autobreak.py file/path/to/json/file.json
 
 The script will generate several output files: `output.json`, `crossover_report.csv`, `domain_report.csv`, and optionally `output_connected.json`, `output_autobreak.json`, `crossover_report_connected.csv`, `domain_report_connected.csv`.
 - The `output.json` file is compatible with cadnano2. Open the file with cadnano2 as usual. Colour codes are written above.
-- `crossover_report.csv` summarises the crossover frequency of every adjacent helix pair, in ascending order of the central helix number. So, e.g. 0-1 and 1-0 appear twice. From left to right: helix number, total count of crossover, crossover count by scaffold, crossover count by staple, filled length of the focused helix, count of short domains of invalid (neither blue nor cyan) strands.
+- `crossover_report.csv` summarises the crossover frequency of every adjacent helix pair (by num in slice panel), in ascending order of the central helix number. So, e.g. 0-1 and 1-0 appear twice. From left to right: helix pair number, total count of crossover, crossover count by scaffold, crossover count by staple, filled length of the focused helix, count of short domains of invalid (neither blue nor cyan) strands.
 - `domain_report.csv` lists the staples to display domain properties. In this list, the first and the second column shows the locations of the 5' end and 3' end of the strand, similarly to the staple export file of cadnano2. In the third column, the domain structure is printed as follows: `a-z` represents continuous base pairings with incremental domain naming. If the domain is longer than 13 nt, the domain is shown by the upper letter `A-Z`; `^` indicates a base not hybridised to the scaffold, and `!` is an error catcher for situations like the presence of more than 260 domains in a single staple. Note that the domain label circulates between a-z (a is next to z). Length is provided in the last column for reference.
 
 ### Arguments
