@@ -2,10 +2,11 @@
 This repository contains several microtools designed to enhance the functionality of cadnano, a popular software for designing DNA nanostructures.
 
 ## Semi-Autobreak
-Merged with `Seeding Domain Tracer`. A Python script that supports users' semi-automatic optimisation of the breaking points of staples in DNA origami design. It removes existing staple breaks and introduces breaks with the following criteria if possible. If not possible, the strand is left intact. Users will attempt to rearrange the crossover position referring to the generated reports and repeatedly run the script to turn all strands blue.
+A Python script that supports users' semi-automatic optimisation of the breaking points of staples in DNA origami design. It removes existing staple breaks and introduces breaks with the following criteria if possible. If not possible, or if the user colour the staple in black, the strand is left intact. Users will attempt to rearrange the crossover position referring to the generated reports and repeatedly run the script to turn all strands blue (or cyan). Merged with `Seeding Domain Tracer` on 19th Sept 2023. 
 
 ### Criteria
-- All staples should have a seeding domain, continuous hybridisation to the scaffold, longer than 11 nt or, preferably, > 13 nt. (configurable by optional arguments)
+- All staples should have a seeding domain, continuous hybridisation to the scaffold without staple/scaffold crossover, ≥ 12 nt or, preferably, ≥ 14 nt. (configurable by optional arguments)
+- All ends of staples are at least three base away from staple crossover. 
 - The length of all split staples should be within the specified range, ≥ 20 and ≤ 80 by default. (configurable by optional arguments)
 - The most preferable breaking point is selected from all possible combinations based on its `score`. The score represents the quality of split staples. A shorter staple is preferable (minimum length staple has twice the score as maximum length staple), a higher split number is preferable (score is the sum of individual split staple scores), and a seeding domain above 13 is more preferable than one above 11 (1:0.3).
   
@@ -15,8 +16,8 @@ _See the reference at the bottom for the theoretical/experimental background abo
 - **Staples without ends:** These remain uncoloured, appearing as the default dark grey.
 - **Staples with a length above 80 nt:** These are coloured magenta. (Adjust according to your policy by modifying length_max in trace_domain().)
 - **Staples with a length below 20 nt:** These are coloured yellow. (Adjust according to your policy by modifying length_min in trace_domain().)
-- **Staples with > 13 nt continuous hybridisation to the scaffold:** These are coloured blue.
-- **Staples with > 11 nt continuous hybridisation to the scaffold:** These are coloured cyan.
+- **Staples with ≥ 14 nt continuous hybridisation to the scaffold:** These are coloured blue.
+- **Staples with ≥ 12 nt continuous hybridisation to the scaffold:** These are coloured cyan.
 - **Staples without seeding domains:** These are coloured red.
 
 ### How to Use
@@ -41,6 +42,9 @@ The script will generate several output files: `output.json`, `crossover_report.
 - `-manual`: Only the staple colour is updated and autobreak is skipped. This behaviour is the same as the seeding-domain-tracer.
 - `-connect`: Reconnect all breakpoints of staples, by halting the autobreak script.
 - `-color`: Retain an intermediate JSON file displaying autobroken staples in green.
+- `-limit`: 10000 by default. Limiter to prevent combinatorial explosion. The threshold to apply filter (below) breaking pattern variation. For low restriction design, apply limit below 1000 to reduce calculation cost, with no siginficant difference.
+- `-filter`: 100 by default. Filter to prevent combinatorial explosion. The pattern exceeding threshold (above) will be filtered to this number.
+- `-distance`: 3 by default. Distance from 5-/3-end of staple and staple crossover (not considering scaffold crossover).
 
 ### Staple Optimisation Workflow Semi-Autobreak
 
