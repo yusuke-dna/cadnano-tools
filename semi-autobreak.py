@@ -22,12 +22,6 @@ def get_args():
     parser.add_argument('-limit', dest='limit', type=int, default=1000, help='Limitter to prevent unlimited calculation.')
     return parser.parse_args()
 
-
-max_length = 80    # configure as you like, directly in the script or optional argument '-max'
-min_length = 20    # configure as you like, directly in the script or optional argument '-min'
-optimal_seed_len = 14    # configure as you like, directly in the script or optional argument '-optimal'
-acceptable_seed_len = 12    # configure as you like, directly in the script or optional argument '-acceptable'
-
 def trace_domain(blueprint: dict, helix_num: int, pos_num: int, strand_id: int, report_path: str, max_length, min_length, optimal_seed_len, acceptable_seed_len) -> tuple [dict, list]:
     # Change color of specific helices according to domain composition.
     tracer_pos = pos_num
@@ -195,7 +189,7 @@ def short_domain_counter(count_list,short_domain_list) -> list:
         count_list[helix_id] += 1
     return count_list
 
-def autobreak_search(input_seq: str, min_length=min_length, max_length=max_length, acceptable_seed_len=acceptable_seed_len, optimal_seed_len=optimal_seed_len) -> list:
+def autobreak_search(input_seq: str, min_length=args.min, max_length=args.max, acceptable_seed_len=args.acceptable, optimal_seed_len=args.optimal) -> list:
     def score_seq(sequence: str) -> float:  # at present the location of seeding domain is not considered
         seeding_domain = 0
         count = 0
