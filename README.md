@@ -6,9 +6,10 @@ A Python script that supports users' semi-automatic optimisation of the breaking
 
 ### Criteria
 - All staples should have a seeding domain, continuous hybridisation to the scaffold without staple/scaffold crossover, ≥ 12 nt or, preferably, ≥ 14 nt. (configurable by optional arguments)
-- All ends of staples are at least three base away from staple crossover. 
-- The length of all split staples should be within the specified range, ≥ 20 and ≤ 80 by default. (configurable by optional arguments)
-- The most preferable breaking point is selected from all possible combinations based on its `score`. The score represents the quality of split staples. A shorter staple is preferable (minimum length staple has twice the score as maximum length staple), a higher split number is preferable (score is the sum of individual split staple scores), and a seeding domain above 13 is more preferable than one above 11 (1:0.3).
+- All ends of staples are at least three base away from staple crossover. (configurable by optional arguments `-distance`)
+- The length of all split staples should be within the specified range, ≥ 20 and ≤ 80 by default. (configurable by optional arguments `-min` and `-max`)
+- The most preferable breaking point is selected from all possible combinations based on its `score`. The score represents the quality of split staples. A shorter staple is preferable (minimum length staple has twice the score as maximum length staple), a higher split number is preferable (score is the sum of individual split staple scores), and a seeding domain above 13 is more preferable than one above 11 (1:0.3). (configurable by optional arguments `-acceptable` and `-optimal`)
+- Calculation is limited up to 10 000 patterns per generation. If exceed, top 100 (by score) patterns are filtered to next breaking point search. (configurable by optional arguments `-limit` and `-filter`)
   
 _See the reference at the bottom for the theoretical/experimental background about `seeding domain`._
 
