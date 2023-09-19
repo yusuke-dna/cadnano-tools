@@ -64,8 +64,6 @@ if blueprint:
     for i in range(len(blueprint['vstrands'])):
         num.update({blueprint['vstrands'][i]['num']: i})
 
-    print(num)
-
 def trace_domain(blueprint: dict, helix_num: int, pos_num: int, strand_id: int, report_path: str, max_length=args.max, min_length=args.min, optimal_seed_len=args.optimal, acceptable_seed_len=args.acceptable) -> tuple [dict, list]:
     # Change color of specific helices according to domain composition.
     tracer_pos = pos_num
