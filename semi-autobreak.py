@@ -22,6 +22,16 @@ def get_args():
     parser.add_argument('-limit', dest='limit', type=int, default=1000, help='Limitter to prevent unlimited calculation.')
     return parser.parse_args()
 
+args = get_args()
+min_length = args.min
+max_length = args.max
+if min_length > max_length:
+    raise ValueError(f'max length {max_length} shuold be larger than min length {min_length}') 
+optimal_seed_len = args.optimal
+acceptable_seed_len = args.acceptable
+if optimal_seed_len < acceptable_seed_len:
+    raise ValueError(f'optimal seeding length {optimal_seed_len} shuold be larger than acceptable seed length {acceptable_seed_len}') 
+
 def trace_domain(blueprint: dict, helix_num: int, pos_num: int, strand_id: int, report_path: str, max_length, min_length, optimal_seed_len, acceptable_seed_len) -> tuple [dict, list]:
     # Change color of specific helices according to domain composition.
     tracer_pos = pos_num
@@ -352,16 +362,6 @@ def reconnect_breaks(blueprint: dict, hel_num: int, pos_num: int) -> dict:
         else:
             end_flag = True
     return blueprint
-
-args = get_args()
-min_length = args.min
-max_length = args.max
-if min_length > max_length:
-    raise ValueError(f'max length {max_length} shuold be larger than min length {min_length}') 
-optimal_seed_len = args.optimal
-acceptable_seed_len = args.acceptable
-if optimal_seed_len < acceptable_seed_len:
-    raise ValueError(f'optimal seeding length {optimal_seed_len} shuold be larger than acceptable seed length {acceptable_seed_len}') 
 
 blueprint = load_json_file(args.input_file)
 if blueprint:
