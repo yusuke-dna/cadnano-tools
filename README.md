@@ -91,6 +91,6 @@ Cadnano2 is developped by Douglas group:
 Douglas et al. 'Rapid prototyping of 3D DNA-origami shapes with caDNAno' Nucleic Acids Res: 37(15):5001–6 (2009) https://doi.org/10.1093/nar/gkp436
 https://github.com/douglaslab/cadnano2
 
-The Seeding Domain Tracer script is based on the following research:
+The Seeding Domain Tracer/Semi-Autobreak scripts are based on the following research:
 
 Ke, Y., G. Bellot, N. V. Voigt, E. Fradkov, and W. M. Shih. 'Two Design Strategies for Enhancement of Multilayer-DNA-Origami Folding: Underwinding for Specific Intercalator Rescue and Staple-Break Positioning'. Chem Sci 3, no. 8 (1 August 2012): 2587–97. [https://doi.org/10.1039/C2SC20446K](https://doi.org/10.1039/C2SC20446K).
