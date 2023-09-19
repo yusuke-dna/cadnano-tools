@@ -65,6 +65,10 @@ _Updated on 2023-09-19_
 11. At last, review once more to ensure all adjacent helices have proper crossover frequency (`crossover_report.csv`) and location (`output.json`).
 12. Optionally, some edge staples extended at step 4 could be trimmed to minimum length limit. (this would be included in script in future update.)
 
+### Known issues
+- Inserts and skips are not counted for now.
+- The script recognises crossover only when the base positions of two ends are kept same (e.g. 1[118] to 10[118]).
+
 ## Simple Multiplier
 
 The `Simple Multiplier` is a script that automates the process of copying and pasting repetitive DNA origami designs from a unique unit. This can significantly reduce the time required to create symmetric structures.
