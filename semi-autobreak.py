@@ -60,9 +60,11 @@ if blueprint:
         distance = 4 + 4 * single_array
 
     # reverse dict to convert num in json file to vstrands list index.
-    num = {}
+    num2id = {}
+    id2num = {}
     for i in range(len(blueprint['vstrands'])):
-        num.update({blueprint['vstrands'][i]['num']: i})
+        num2id.update({blueprint['vstrands'][i]['num']: i})
+        id2num.update({i: blueprint['vstrands'][i]['num']})
 
 def trace_domain(blueprint: dict, helix_num: int, pos_num: int, strand_id: int, report_path: str, max_length=args.max, min_length=args.min, optimal_seed_len=args.optimal, acceptable_seed_len=args.acceptable) -> tuple [dict, list]:
     # Change color of specific helices according to domain composition.
@@ -81,23 +83,23 @@ def trace_domain(blueprint: dict, helix_num: int, pos_num: int, strand_id: int, 
     domain_string = ''
 
     while staple_3_end != -1:
-        if blueprint['vstrands'][num[tracer_hel]]['scaf'][tracer_pos][0] == -1 and blueprint['vstrands'][num[tracer_hel]]['scaf'][tracer_pos][2] == -1: # Both end of scaffold is monitored. If scaffold is blank.
-            staple_3_end = blueprint['vstrands'][num[tracer_hel]]['stap'][tracer_pos][2]
+        if blueprint['vstrands'][num2id[tracer_hel]]['scaf'][tracer_pos][0] == -1 and blueprint['vstrands'][num2id[tracer_hel]]['scaf'][tracer_pos][2] == -1: # Both end of scaffold is monitored. If scaffold is blank.
+            staple_3_end = blueprint['vstrands'][num2id[tracer_hel]]['stap'][tracer_pos][2]
             count = 0
             domain_string += '^' # ssDNA region
             last_tracer_hel = tracer_hel
             last_tracer_pos = tracer_pos
-            tracer_hel = blueprint['vstrands'][num[last_tracer_hel]]['stap'][last_tracer_pos][2]
-            tracer_pos = blueprint['vstrands'][num[last_tracer_hel]]['stap'][last_tracer_pos][3]
-        elif blueprint['vstrands'][num[tracer_hel]]['stap'][tracer_pos][2] == tracer_hel and blueprint['vstrands'][num[tracer_hel]]['scaf'][tracer_pos][0] == tracer_hel: # if domain continues
-            staple_3_end = blueprint['vstrands'][num[tracer_hel]]['stap'][tracer_pos][2]
+            tracer_hel = blueprint['vstrands'][num2id[last_tracer_hel]]['stap'][last_tracer_pos][2]
+            tracer_pos = blueprint['vstrands'][num2id[last_tracer_hel]]['stap'][last_tracer_pos][3]
+        elif blueprint['vstrands'][num2id[tracer_hel]]['stap'][tracer_pos][2] == tracer_hel and blueprint['vstrands'][num2id[tracer_hel]]['scaf'][tracer_pos][0] == tracer_hel: # if domain continues
+            staple_3_end = blueprint['vstrands'][num2id[tracer_hel]]['stap'][tracer_pos][2]
             count += 1
             max_count = max(count,max_count)
             domain_string += alphabet[domain_num]
             last_tracer_pos = tracer_pos
-            tracer_pos = blueprint['vstrands'][num[tracer_hel]]['stap'][tracer_pos][3]
+            tracer_pos = blueprint['vstrands'][num2id[tracer_hel]]['stap'][tracer_pos][3]
         else:  # domain broken
-            staple_3_end = blueprint['vstrands'][num[tracer_hel]]['stap'][tracer_pos][2]
+            staple_3_end = blueprint['vstrands'][num2id[tracer_hel]]['stap'][tracer_pos][2]
             if count < 8 and count > 1:
                 hel_history.append(tracer_hel)
             if count >= acceptable_seed_len - 1:
@@ -108,26 +110,26 @@ def trace_domain(blueprint: dict, helix_num: int, pos_num: int, strand_id: int, 
             domain_num += 1
             last_tracer_hel = tracer_hel
             last_tracer_pos = tracer_pos
-            tracer_hel = blueprint['vstrands'][num[last_tracer_hel]]['stap'][last_tracer_pos][2]
-            tracer_pos = blueprint['vstrands'][num[last_tracer_hel]]['stap'][last_tracer_pos][3]
+            tracer_hel = blueprint['vstrands'][num2id[last_tracer_hel]]['stap'][last_tracer_pos][2]
+            tracer_pos = blueprint['vstrands'][num2id[last_tracer_hel]]['stap'][last_tracer_pos][3]
     if count < 8 and count > 1:
         hel_history.append(tracer_hel)
     end = str(last_tracer_hel) + '[' + str(last_tracer_pos) + '],'
     total_len = len(domain_string)
-    if blueprint['vstrands'][helix_num]['stap_colors'][strand_id][1] == 0:         # black is left unprocessed.
+    if blueprint['vstrands'][num2id[helix_num]]['stap_colors'][strand_id][1] == 0:         # black is left unprocessed.
         pass
     elif total_len < min_length:
-        blueprint['vstrands'][helix_num]['stap_colors'][strand_id][1] = 16776960  # Yellow when the sequence is too short.
+        blueprint['vstrands'][num2id[helix_num]]['stap_colors'][strand_id][1] = 16776960  # Yellow when the sequence is too short.
     elif total_len > max_length:
-        blueprint['vstrands'][helix_num]['stap_colors'][strand_id][1] = 16711935  # Magenta when the sequence is too long.
+        blueprint['vstrands'][num2id[helix_num]]['stap_colors'][strand_id][1] = 16711935  # Magenta when the sequence is too long.
     elif max_count >= optimal_seed_len - 1 :
-        blueprint['vstrands'][helix_num]['stap_colors'][strand_id][1] = 255 # optimal strand is painted blue.
+        blueprint['vstrands'][num2id[helix_num]]['stap_colors'][strand_id][1] = 255 # optimal strand is painted blue.
         hel_history = []                                                    # short domains in optimal strand is not counted
     elif max_count >= acceptable_seed_len - 1 :
-        blueprint['vstrands'][helix_num]['stap_colors'][strand_id][1] = 65535 # Acceptable strand is painted cyan.
+        blueprint['vstrands'][num2id[helix_num]]['stap_colors'][strand_id][1] = 65535 # Acceptable strand is painted cyan.
         hel_history = []                                                      # short domains in acceptable strand is not counted
     else:
-        blueprint['vstrands'][helix_num]['stap_colors'][strand_id][1] = 16711680 # Rest bad strands are painted red
+        blueprint['vstrands'][num2id[helix_num]]['stap_colors'][strand_id][1] = 16711680 # Rest bad strands are painted red
     write_report(report_path, start + end + domain_string + ',' + str(total_len)) 
     return blueprint, hel_history
 
@@ -137,10 +139,10 @@ def crossover_counter(blueprint: dict, report_path: str, short_domain_list: list
     summary = ''
     for i in range(len(blueprint['vstrands'])):
         neighbours = get_neighbour_helix(blueprint, i)
-        hel_dict = blueprint['vstrands'][num[i]]
+        hel_dict = blueprint['vstrands'][i]
         filled_len = len(hel_dict['scaf'])
         for j in range(len(neighbours)):
-            summary = summary + str(hel_dict['num']) + '-' + str(neighbours[j]) + ','
+            summary = summary + str(hel_dict['num']) + '-' + str(id2num[neighbours[j]]) + ','
             count = 0
             count_stap = 0
             count_scaf = 0
@@ -177,7 +179,7 @@ def color_change(blueprint: dict, filename: str, output_file: str) -> list:
     for helix_id, helix in enumerate(blueprint['vstrands']):
         for strand_id, strand in enumerate(helix['stap_colors']):
             position = strand[0]
-            blueprint, new_short_domains = trace_domain(blueprint, helix_id, position, strand_id, filename)
+            blueprint, new_short_domains = trace_domain(blueprint, id2num[helix_id], position, strand_id, filename)
             short_domain_list.extend(new_short_domains)
     write_json_file(output_file, blueprint)
     return short_domain_list
@@ -195,26 +197,26 @@ def get_neighbour_helix(blueprint: dict, helix_id: int) -> list:
     if not is_empty_helix(blueprint['vstrands'][helix_id]):
         # if neibour is triangle (row + col is odd) arrangement
         if (blueprint['vstrands'][helix_id]['row'] + blueprint['vstrands'][helix_id]['col']) % 2 == 0:
-            for helix_num in range(len(blueprint['vstrands'])):
+            for helix_id in range(len(blueprint['vstrands'])):
                 candidate = -1
-                if blueprint['vstrands'][helix_num]['col'] == blueprint['vstrands'][helix_id]['col'] - 1 and blueprint['vstrands'][helix_num]['row'] == blueprint['vstrands'][helix_id]['row']:
-                    candidate = helix_num
-                elif blueprint['vstrands'][helix_num]['col'] == blueprint['vstrands'][helix_id]['col'] + 1 and blueprint['vstrands'][helix_num]['row'] == blueprint['vstrands'][helix_id]['row']:
-                    candidate = helix_num
-                elif blueprint['vstrands'][helix_num]['col'] == blueprint['vstrands'][helix_id]['col'] and blueprint['vstrands'][helix_num]['row'] == blueprint['vstrands'][helix_id]['row'] - 1:
-                    candidate = helix_num
+                if blueprint['vstrands'][helix_id]['col'] == blueprint['vstrands'][helix_id]['col'] - 1 and blueprint['vstrands'][helix_id]['row'] == blueprint['vstrands'][helix_id]['row']:
+                    candidate = helix_id
+                elif blueprint['vstrands'][helix_id]['col'] == blueprint['vstrands'][helix_id]['col'] + 1 and blueprint['vstrands'][helix_id]['row'] == blueprint['vstrands'][helix_id]['row']:
+                    candidate = helix_id
+                elif blueprint['vstrands'][helix_id]['col'] == blueprint['vstrands'][helix_id]['col'] and blueprint['vstrands'][helix_id]['row'] == blueprint['vstrands'][helix_id]['row'] - 1:
+                    candidate = helix_id
                 if candidate != -1 and not is_empty_helix(blueprint['vstrands'][candidate]):
                     neighbour_list.append(candidate)
         # if neibour is reverse triangle arrangement
         else:
-            for helix_num in range(len(blueprint['vstrands'])):
+            for helix_id in range(len(blueprint['vstrands'])):
                 candidate = -1
-                if blueprint['vstrands'][helix_num]['col'] == blueprint['vstrands'][helix_id]['col'] - 1 and blueprint['vstrands'][helix_num]['row'] == blueprint['vstrands'][helix_id]['row']:
-                    candidate = helix_num
-                elif blueprint['vstrands'][helix_num]['col'] == blueprint['vstrands'][helix_id]['col'] + 1 and blueprint['vstrands'][helix_num]['row'] == blueprint['vstrands'][helix_id]['row']:
-                    candidate = helix_num
-                elif blueprint['vstrands'][helix_num]['col'] == blueprint['vstrands'][helix_id]['col'] and blueprint['vstrands'][helix_num]['row'] == blueprint['vstrands'][helix_id]['row'] + 1:
-                    candidate = helix_num
+                if blueprint['vstrands'][helix_id]['col'] == blueprint['vstrands'][helix_id]['col'] - 1 and blueprint['vstrands'][helix_id]['row'] == blueprint['vstrands'][helix_id]['row']:
+                    candidate = helix_id
+                elif blueprint['vstrands'][helix_id]['col'] == blueprint['vstrands'][helix_id]['col'] + 1 and blueprint['vstrands'][helix_id]['row'] == blueprint['vstrands'][helix_id]['row']:
+                    candidate = helix_id
+                elif blueprint['vstrands'][helix_id]['col'] == blueprint['vstrands'][helix_id]['col'] and blueprint['vstrands'][helix_id]['row'] == blueprint['vstrands'][helix_id]['row'] + 1:
+                    candidate = helix_id
                 if candidate != -1 and not is_empty_helix(blueprint['vstrands'][candidate]):
                     neighbour_list.append(candidate)
     return neighbour_list
@@ -335,9 +337,9 @@ def autobreak(blueprint: dict, report_path: str, color=False) -> dict:
         hel = int(hel)
         pos = int(pos[:-1])
         if split_length != []:
-            for i in range(len(blueprint['vstrands'][num[hel]]['stap_colors'])):
-                if blueprint['vstrands'][num[hel]]['stap_colors'][i][0] == pos:
-                    blueprint['vstrands'][num[hel]]['stap_colors'][i][1] = 65280
+            for i in range(len(blueprint['vstrands'][num2id[hel]]['stap_colors'])):
+                if blueprint['vstrands'][num2id[hel]]['stap_colors'][i][0] == pos:
+                    blueprint['vstrands'][num2id[hel]]['stap_colors'][i][1] = 65280
             for i in range(len(split_length)):
                 blueprint, hel, pos = break_3_end(blueprint, hel, pos, split_length[i])
     if color:   # if intermediate file kept or unsaved.
@@ -353,28 +355,28 @@ def break_3_end(blueprint: dict, hel_num: int, pos_num: int, split_length: int) 
     while count < split_length:
         last_tracer_hel = tracer_hel
         last_tracer_pos = tracer_pos
-        tracer_hel = blueprint['vstrands'][num[last_tracer_hel]]['stap'][last_tracer_pos][2]
-        tracer_pos = blueprint['vstrands'][num[last_tracer_hel]]['stap'][last_tracer_pos][3]
+        tracer_hel = blueprint['vstrands'][num2id[last_tracer_hel]]['stap'][last_tracer_pos][2]
+        tracer_pos = blueprint['vstrands'][num2id[last_tracer_hel]]['stap'][last_tracer_pos][3]
         count += 1
-    blueprint['vstrands'][num[tracer_hel]]['stap'][last_tracer_pos][2] = -1
-    blueprint['vstrands'][num[tracer_hel]]['stap'][last_tracer_pos][3] = -1
-    blueprint['vstrands'][num[tracer_hel]]['stap'][tracer_pos][0] = -1
-    blueprint['vstrands'][num[tracer_hel]]['stap'][tracer_pos][1] = -1
-    blueprint['vstrands'][num[tracer_hel]]['stap_colors'].append([tracer_pos,65280])
+    blueprint['vstrands'][num2id[tracer_hel]]['stap'][last_tracer_pos][2] = -1
+    blueprint['vstrands'][num2id[tracer_hel]]['stap'][last_tracer_pos][3] = -1
+    blueprint['vstrands'][num2id[tracer_hel]]['stap'][tracer_pos][0] = -1
+    blueprint['vstrands'][num2id[tracer_hel]]['stap'][tracer_pos][1] = -1
+    blueprint['vstrands'][num2id[tracer_hel]]['stap_colors'].append([tracer_pos,65280])
     # sort accending order 
-    blueprint['vstrands'][num[tracer_hel]]['stap_colors'].sort(key=lambda x: x[0])
+    blueprint['vstrands'][num2id[tracer_hel]]['stap_colors'].sort(key=lambda x: x[0])
     return blueprint, tracer_hel, tracer_pos
 
 def autoconnect(blueprint: dict) -> dict:
     staple_list = {}
     for helix_id, helix in enumerate(blueprint['vstrands']):
         for strand_id, strand in enumerate(helix['stap_colors']):
-            if helix_id not in staple_list:
-                staple_list[helix_id] = []
-            staple_list[helix_id].append(strand[0])
-    for helix_id in staple_list:
-        for position in staple_list[helix_id]:
-            blueprint = reconnect_breaks(blueprint, helix_id, position)
+            if id2num[helix_id] not in staple_list:
+                staple_list[id2num[helix_id]] = []
+            staple_list[id2num[helix_id]].append(strand[0])
+    for helix_num in staple_list:
+        for position in staple_list[helix_num]:
+            blueprint = reconnect_breaks(blueprint, helix_num, position)
     return blueprint
 
 def reconnect_breaks(blueprint: dict, hel_num: int, pos_num: int) -> dict:
@@ -383,11 +385,11 @@ def reconnect_breaks(blueprint: dict, hel_num: int, pos_num: int) -> dict:
     last_tracer_pos = tracer_pos
     last_tracer_hel = tracer_hel
     # reverse tracing to 5'end to avoid loop creation
-    while not(blueprint['vstrands'][num[tracer_hel]]['stap'][tracer_pos][0] == -1 and blueprint['vstrands'][num[tracer_hel]]['stap'][tracer_pos][1] == -1):
+    while not(blueprint['vstrands'][num2id[tracer_hel]]['stap'][tracer_pos][0] == -1 and blueprint['vstrands'][num2id[tracer_hel]]['stap'][tracer_pos][1] == -1):
         last_tracer_hel = tracer_hel
         last_tracer_pos = tracer_pos
-        tracer_hel = blueprint['vstrands'][num[last_tracer_hel]]['stap'][last_tracer_pos][0]
-        tracer_pos = blueprint['vstrands'][num[last_tracer_hel]]['stap'][last_tracer_pos][1]
+        tracer_hel = blueprint['vstrands'][num2id[last_tracer_hel]]['stap'][last_tracer_pos][0]
+        tracer_pos = blueprint['vstrands'][num2id[last_tracer_hel]]['stap'][last_tracer_pos][1]
     start_hel = tracer_hel
     start_pos = tracer_pos
     tracer_pos = pos_num
@@ -399,28 +401,28 @@ def reconnect_breaks(blueprint: dict, hel_num: int, pos_num: int) -> dict:
         while tracer_pos != -1:
             last_tracer_hel = tracer_hel
             last_tracer_pos = tracer_pos
-            tracer_hel = blueprint['vstrands'][num[last_tracer_hel]]['stap'][last_tracer_pos][2]
-            tracer_pos = blueprint['vstrands'][num[last_tracer_hel]]['stap'][last_tracer_pos][3]
+            tracer_hel = blueprint['vstrands'][num2id[last_tracer_hel]]['stap'][last_tracer_pos][2]
+            tracer_pos = blueprint['vstrands'][num2id[last_tracer_hel]]['stap'][last_tracer_pos][3]
         # connect break if next position is filled
-        if blueprint['vstrands'][num[last_tracer_hel]]['stap'][last_tracer_pos][1] != -1:
-            direction = last_tracer_pos - blueprint['vstrands'][num[last_tracer_hel]]['stap'][last_tracer_pos][1]    # if pos num of 3' is larger, +1, if smaller, -1
+        if blueprint['vstrands'][num2id[last_tracer_hel]]['stap'][last_tracer_pos][1] != -1:
+            direction = last_tracer_pos - blueprint['vstrands'][num2id[last_tracer_hel]]['stap'][last_tracer_pos][1]    # if pos num of 3' is larger, +1, if smaller, -1
         else:
-            direction = - last_tracer_pos + blueprint['vstrands'][num[last_tracer_hel]]['stap'][last_tracer_pos][3] 
-        if blueprint['vstrands'][num[last_tracer_hel]]['stap'][last_tracer_pos + direction][0] == -1 and blueprint['vstrands'][num[last_tracer_hel]]['stap'][last_tracer_pos + direction][1] == -1 and \
-           blueprint['vstrands'][num[last_tracer_hel]]['stap'][last_tracer_pos + direction][2] != -1 and blueprint['vstrands'][num[last_tracer_hel]]['stap'][last_tracer_pos + direction][3] != -1:
+            direction = - last_tracer_pos + blueprint['vstrands'][num2id[last_tracer_hel]]['stap'][last_tracer_pos][3] 
+        if blueprint['vstrands'][num2id[last_tracer_hel]]['stap'][last_tracer_pos + direction][0] == -1 and blueprint['vstrands'][num2id[last_tracer_hel]]['stap'][last_tracer_pos + direction][1] == -1 and \
+           blueprint['vstrands'][num2id[last_tracer_hel]]['stap'][last_tracer_pos + direction][2] != -1 and blueprint['vstrands'][num2id[last_tracer_hel]]['stap'][last_tracer_pos + direction][3] != -1:
             if not (last_tracer_hel == start_hel and last_tracer_pos + direction == start_pos) :    # exclude circular connection
                 # fill gap and remove the color of connected staple, only when the 3' strand is not black.
-                for i in range(len(blueprint['vstrands'][num[last_tracer_hel]]['stap_colors'])):
-                    if blueprint['vstrands'][num[last_tracer_hel]]['stap_colors'][i][0] == last_tracer_pos + direction and blueprint['vstrands'][num[last_tracer_hel]]['stap_colors'][i][1] == 0: # Black strand is left intact, for manual editing.
+                for i in range(len(blueprint['vstrands'][num2id[last_tracer_hel]]['stap_colors'])):
+                    if blueprint['vstrands'][num2id[last_tracer_hel]]['stap_colors'][i][0] == last_tracer_pos + direction and blueprint['vstrands'][num2id[last_tracer_hel]]['stap_colors'][i][1] == 0: # Black strand is left intact, for manual editing.
                         end_flag = True
                         print("Strand: " + str(start_hel) + "[" + str(start_pos) + "] was left broken as specified")
-                    elif blueprint['vstrands'][num[last_tracer_hel]]['stap_colors'][i][0] == last_tracer_pos + direction:
-                        blueprint['vstrands'][num[last_tracer_hel]]['stap'][last_tracer_pos][2] = last_tracer_hel
-                        blueprint['vstrands'][num[last_tracer_hel]]['stap'][last_tracer_pos][3] = last_tracer_pos + direction
-                        blueprint['vstrands'][num[last_tracer_hel]]['stap'][last_tracer_pos + direction][0] = last_tracer_hel
-                        blueprint['vstrands'][num[last_tracer_hel]]['stap'][last_tracer_pos + direction][1] = last_tracer_pos
+                    elif blueprint['vstrands'][num2id[last_tracer_hel]]['stap_colors'][i][0] == last_tracer_pos + direction:
+                        blueprint['vstrands'][num2id[last_tracer_hel]]['stap'][last_tracer_pos][2] = last_tracer_hel
+                        blueprint['vstrands'][num2id[last_tracer_hel]]['stap'][last_tracer_pos][3] = last_tracer_pos + direction
+                        blueprint['vstrands'][num2id[last_tracer_hel]]['stap'][last_tracer_pos + direction][0] = last_tracer_hel
+                        blueprint['vstrands'][num2id[last_tracer_hel]]['stap'][last_tracer_pos + direction][1] = last_tracer_pos
                         print("reconnected strand: " + str(start_hel) + "[" + str(start_pos) + "] at " + str(last_tracer_hel) + "[" + str(last_tracer_pos + direction) + "]")
-                        blueprint['vstrands'][num[last_tracer_hel]]['stap_colors'].pop(i)
+                        blueprint['vstrands'][num2id[last_tracer_hel]]['stap_colors'].pop(i)
                         break
             else:
                 print("Strand: " + str(start_hel) + "[" + str(start_pos) + "] was left broken to avold loop")
