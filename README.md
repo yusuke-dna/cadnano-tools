@@ -34,7 +34,7 @@ The script will generate several output files: `output.json`, `crossover_report.
 - `domain_report.csv` lists the staples to display domain properties. In this list, the first and the second column shows the locations of the 5' end and 3' end of the strand, similarly to the staple export file of cadnano2. In the third column, the domain structure is printed as follows: `a-z` represents continuous base pairings with incremental domain naming. If the domain is longer than 13 nt, the domain is shown by the upper letter `A-Z`; `^` indicates a base not hybridised to the scaffold, and `!` is an error catcher for situations like the presence of more than 260 domains in a single staple. Note that the domain label circulates between a-z (a is next to z). Length is provided in the last column for reference.
 
 ### Arguments
-- `[File path]`: Mandatory argument. Input cadnano json file.
+- `[File path]`: Mandatory argument. Input path to cadnano json file.
 - `-max [number]`: 80 by default. Lower limit of staple length. Coloured yellow if the staple is shorter than this number.
 - `-min [number]`: 20 by default. Upper limit of staple length. Coloured magenta if exceeded.
 - `-optimal [number]`: 14 by default. Requirement for minimum continuous hybridisation length per staple. Staples meeting this requirement are coloured blue.
