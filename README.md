@@ -88,6 +88,18 @@ $ python3 simple-multiplier.py file/path/to/json/file.json
   
 <img width="2168" alt="image" src="https://github.com/yusuke-dna/cadnano-tools/assets/70700401/a5a6d52b-7c3d-40c1-88c3-a57831821743">
 
+## Simple Slider
+
+The `Simple Slider` is a script that automate the process of moving DNA origami design to right (+) or left (-) free space. Moving right extend path panel width while moving left remove specific bases from left side of the path panel, if nothing are written in the deleting zone.
+
+### How to Use
+
+To use the Simple Slider, navigate to the directory containing the script, and run the following command:
+```   
+$ python3 simple-slider.py file/path/to/json/file.json [sliding number]
+```
+Both file path and number are required. The sliding number should be multiple of 32 (square lattice) or 21 (honeycomb lattice).
+
 ---
 ### References
 Cadnano2 is developped by Douglas group:
