@@ -196,28 +196,30 @@ def get_neighbour_helix(blueprint: dict, helix_id: int) -> list:
     # Get helix id of neighbours
     neighbour_list = []
     if not is_empty_helix(blueprint['vstrands'][helix_id]):
-        # if neibour is triangle (row + col is odd) arrangement
-        if (blueprint['vstrands'][helix_id]['row'] + blueprint['vstrands'][helix_id]['col']) % 2 == 0:
-            for helix_id in range(len(blueprint['vstrands'])):
+        target_row = blueprint['vstrands'][helix_id]['row']
+        target_col = blueprint['vstrands'][helix_id]['col']
+        # if neighbour is triangle (row + col is odd) arrangement
+        if (target_row + target_col) % 2 == 0:
+            for i in range(len(blueprint['vstrands'])):
                 candidate = -1
-                if blueprint['vstrands'][helix_id]['col'] == blueprint['vstrands'][helix_id]['col'] - 1 and blueprint['vstrands'][helix_id]['row'] == blueprint['vstrands'][helix_id]['row']:
-                    candidate = helix_id
-                elif blueprint['vstrands'][helix_id]['col'] == blueprint['vstrands'][helix_id]['col'] + 1 and blueprint['vstrands'][helix_id]['row'] == blueprint['vstrands'][helix_id]['row']:
-                    candidate = helix_id
-                elif blueprint['vstrands'][helix_id]['col'] == blueprint['vstrands'][helix_id]['col'] and blueprint['vstrands'][helix_id]['row'] == blueprint['vstrands'][helix_id]['row'] - 1:
-                    candidate = helix_id
+                if blueprint['vstrands'][i]['col'] == target_col - 1 and blueprint['vstrands'][i]['row'] == target_row:
+                    candidate = i
+                elif blueprint['vstrands'][i]['col'] == target_col + 1 and blueprint['vstrands'][i]['row'] == target_row:
+                    candidate = i
+                elif blueprint['vstrands'][i]['col'] == target_col and blueprint['vstrands'][i]['row'] == target_row - 1:
+                    candidate = i
                 if candidate != -1 and not is_empty_helix(blueprint['vstrands'][candidate]):
                     neighbour_list.append(candidate)
-        # if neibour is reverse triangle arrangement
+        # if neighbour is reverse triangle arrangement
         else:
-            for helix_id in range(len(blueprint['vstrands'])):
+            for i in range(len(blueprint['vstrands'])):
                 candidate = -1
-                if blueprint['vstrands'][helix_id]['col'] == blueprint['vstrands'][helix_id]['col'] - 1 and blueprint['vstrands'][helix_id]['row'] == blueprint['vstrands'][helix_id]['row']:
-                    candidate = helix_id
-                elif blueprint['vstrands'][helix_id]['col'] == blueprint['vstrands'][helix_id]['col'] + 1 and blueprint['vstrands'][helix_id]['row'] == blueprint['vstrands'][helix_id]['row']:
-                    candidate = helix_id
-                elif blueprint['vstrands'][helix_id]['col'] == blueprint['vstrands'][helix_id]['col'] and blueprint['vstrands'][helix_id]['row'] == blueprint['vstrands'][helix_id]['row'] + 1:
-                    candidate = helix_id
+                if blueprint['vstrands'][i]['col'] == target_col - 1 and blueprint['vstrands'][i]['row'] == target_row:
+                    candidate = i
+                elif blueprint['vstrands'][i]['col'] == target_col + 1 and blueprint['vstrands'][i]['row'] == target_row:
+                    candidate = i
+                elif blueprint['vstrands'][i]['col'] == target_col and blueprint['vstrands'][i]['row'] == target_row + 1:
+                    candidate = i
                 if candidate != -1 and not is_empty_helix(blueprint['vstrands'][candidate]):
                     neighbour_list.append(candidate)
     return neighbour_list
