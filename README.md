@@ -110,3 +110,6 @@ https://github.com/douglaslab/cadnano2
 The Seeding Domain Tracer/Semi-Autobreak scripts are based on the following research:
 
 Ke, Y., G. Bellot, N. V. Voigt, E. Fradkov, and W. M. Shih. 'Two Design Strategies for Enhancement of Multilayer-DNA-Origami Folding: Underwinding for Specific Intercalator Rescue and Staple-Break Positioning'. Chem Sci 3, no. 8 (1 August 2012): 2587–97. [https://doi.org/10.1039/C2SC20446K](https://doi.org/10.1039/C2SC20446K).
+
+DNA origami regular tile is derived from:
+Tikhomirov, G., Petersen, P. & Qian, L. Fractal assembly of micrometre-scale DNA origami arrays with arbitrary patterns. Nature 552, 67–71 (2017). https://doi.org/10.1038/nature24655
