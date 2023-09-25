@@ -102,6 +102,18 @@ $ python3 simple-slider.py file/path/to/json/file.json [sliding number]
 ```
 Both file path and number are required. The sliding number should be multiple of 32 (square lattice) or 21 (honeycomb lattice).
 
+## Color Resetter
+
+The `Color Resetter` is a simple script to assign random staple colour, which is default of cadnano.
+
+### How to Use
+
+To use the Color Resetter, navigate to the directory containing the script, and run the following command:
+```   
+$ python3 color-slider.py file/path/to/json/file.json
+```
+It generate output.json file which the staple colours are updated.
+
 ---
 ### References
 Cadnano2 is developped by Douglas group:
