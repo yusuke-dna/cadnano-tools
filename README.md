@@ -7,7 +7,7 @@ A Python script that supports users' semi-automatic optimisation of the breaking
 ### Criteria
 - All staples should have a seeding domain, continuous hybridisation to the scaffold without staple/scaffold crossover, ≥ 12 nt or, preferably, ≥ 14 nt. (configurable by optional arguments `-acceptable` and `-optimal`)
 - All ends of staples are at least three base away from staple crossover. (configurable by optional arguments `-distance`)
-- The length of all split staples should be within the specified range, ≥ 20 and ≤ 80 by default. (configurable by optional arguments `-min` and `-max`)
+- The length of all split staples should be within the specified range, ≥ 18 and ≤ 80 by default. (configurable by optional arguments `-min` and `-max`)
 - The most preferable breaking point is selected from all possible combinations based on its `score`. The score represents the quality of split staples. A shorter staple is preferable (minimum length staple has twice the score as maximum length staple), a higher split number is preferable (score is the sum of individual split staple scores), and a seeding domain above 13 is more preferable than one above 11 (1:0.3).
 - Calculation is limited up to 5 000 patterns per cycle. If exceed, top 100 (by score) patterns are filtered to next breaking point search. (configurable by optional arguments `-limit` and `-filter`) Note that a weight is applied to both to reduce calculation cost for staples with low sequence divesity.
   
@@ -66,8 +66,10 @@ _Updated on 2023-09-19_
 12. Optionally, some edge staples extended at step 4 could be trimmed to minimum length limit. (this would be included in script in future update.)
 
 ### Known issues
-- Inserts and skips are not counted for now.
+- Inserts and skips (for curvature and twist) are not counted for now.
 - The script recognises crossover only when the base positions of two ends are kept same (e.g. 1[118] to 10[118]).
+- Short limit `min` only consider hybridisation (bp) length while long limit `max` includes ssDNA length, resulted in unexpected behaviour when ssDNA is too long.
+- Distance `distance` does not care scaffold crossover for now.
 
 ## Simple Multiplier
 
