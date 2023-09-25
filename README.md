@@ -110,7 +110,7 @@ The `Color Resetter` is a simple script to assign random staple colour, which is
 
 To use the Color Resetter, navigate to the directory containing the script, and run the following command:
 ```   
-$ python3 color-slider.py file/path/to/json/file.json
+$ python3 color-resetter.py file/path/to/json/file.json
 ```
 It generate output.json file which the staple colours are updated.
 
