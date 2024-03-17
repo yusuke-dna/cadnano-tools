@@ -233,12 +233,12 @@ def short_domain_counter(count_list,short_domain_list) -> list:
 def autobreak_search(input_seq: str, min_length=args.min, max_length=args.max, acceptable_seed_len=args.acceptable, optimal_seed_len=args.optimal, limit_num=args.limit, filter_num=args.filter, distance=distance) -> list:
     char_counts = {}
     middle_seq = input_seq.strip('^!')
-    i = 0
-    j = 0
+    i = 0   # index of middle_seq, to specify a letter in the sequence
+    j = 0   # incrementing number key of char_counts, to specify a domain
     char_counts = {j: 0}
     char = 'a'
     while i < len(middle_seq):
-        if middle_seq[i] == char:
+        if middle_seq[i] == char and char != '^':   # if the letter is same as previous one, and not ssDNA region, increment the domein length
             char_counts[j] += 1
         else:
             char = middle_seq[i]
@@ -286,7 +286,7 @@ def autobreak_search(input_seq: str, min_length=args.min, max_length=args.max, a
             # If there's no valid split for this pattern, also consider it completed
             valid_split_found = False
             for k in range(min_length, min(max_length + 1, len(remaining_seq) - 6)):
-                if k + distance - 1 < len(remaining_seq) and remaining_seq[k - distance] == remaining_seq[k + distance - 1] and score_seq(remaining_seq[:k]) and score_seq(remaining_seq[k:]) and len(remaining_seq[k:].strip("^")) >= min_length:
+                if k + distance - 1 < len(remaining_seq) and remaining_seq[k - distance] == remaining_seq[k + distance - 1] and score_seq(remaining_seq[:k]) and score_seq(remaining_seq[k:]) and len(remaining_seq[k:].strip("^")) >= min_length and remaining_seq[k] != '^': # minimum logic to avoid loop break is added.
                     valid_split_found = True
                     split_length = pattern['split_length'] + [k]
                     score = pattern['score'] + score_seq(remaining_seq[:k])
