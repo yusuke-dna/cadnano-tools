@@ -114,6 +114,21 @@ $ python3 color-resetter.py file/path/to/json/file.json
 ```
 It generate output.json file which the staple colours are updated.
 
+## Horizontal Rotator
+
+The `Horizontal Rotator` is a script designed to create a mirrored copy of a DNA origami design, placing the flipped version to the right of the original within the same JSON file. This tool requires the input JSON file to describe a symmetrically arranged lattice for accurate processing. Running the script effectively doubles the path panel width, with the left-side paths (including both scaffold and staples) being mirrored upside down and left to right alongside the original design. The script returns an error if the lattice design lacks symmetric helix arrangements.
+<img width="4032" alt="image" src="https://github.com/yusuke-dna/cadnano-tools/assets/70700401/92fe4e39-2cb3-4f51-a2da-d5206009a265">
+
+### How to Use
+
+To utilise the Horizontal Rotator, first navigate to the directory where the script is located. Then, execute the following command:
+
+```bash
+python3 horizontal-rotator.py /path/to/your/input_file.json
+```
+
+This command generates a new file named `[input_file_name]_modified.json`, which contains both the original design and its mirrored version.
+
 ---
 ### References
 Cadnano2 is developped by Douglas group:
