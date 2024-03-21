@@ -43,12 +43,27 @@ def create_symmetric_num_map(vstrands, min_row, max_row):
     
     return symmetric_num_map
 
-import copy
+def extend_empty_bp(vstrands, length):
+    # insert empty bp to the end of vstrands
+    for vstrand in vstrands:
+        vstrand['scaf'].extend([[-1, -1, -1, -1]] * length)
+        vstrand['stap'].extend([[-1, -1, -1, -1]] * length)
+        vstrand['loop'].extend([0] * length)
+        vstrand['skip'].extend([0] * length)
+
+    return vstrands
 
 def apply_symmetric_modifications(vstrands, symmetric_num_map):
     original_length = len(vstrands[0]['stap'])
     print(f"Initial position range is [0]-[{original_length}]. Applying modifications based on symmetric relationships...")
     original_vstrands = copy.deepcopy(vstrands)  # Deep copy to preserve the original data
+    if original_length % 21 == 0:
+        phase_adjust = 7
+        vstrands = extend_empty_bp(vstrands, phase_adjust)
+        if original_length % 32 == 0:
+            raise ValueError("The length of the vstrands is both a multiple of 21 and 32. The code assume the file is honeycomb lattice.")
+    else:
+        phase_adjust = 0
 
     for vstrand in vstrands:
         symmetric_vstrand_num = symmetric_num_map[vstrand['num']]
@@ -62,9 +77,9 @@ def apply_symmetric_modifications(vstrands, symmetric_num_map):
             for key in ['scaf', 'stap']:
                 modified_data = [
                     [symmetric_num_map[item[0]] if item[0] != -1 else -1, 
-                     2 * original_length - item[1] - 1 if item[1] != -1 else -1,
+                     2 * original_length + phase_adjust - item[1] - 1 if item[1] != -1 else -1,
                      symmetric_num_map[item[2]] if item[2] != -1 else -1, 
-                     2 * original_length - item[3] - 1 if item[3] != -1 else -1
+                     2 * original_length + phase_adjust - item[3] - 1 if item[3] != -1 else -1
                     ]
                     for item in reversed(symmetric_vstrand[key])
                 ]
@@ -80,10 +95,13 @@ def apply_symmetric_modifications(vstrands, symmetric_num_map):
             
             # Adjust stap_colors using the specified equation
             adjusted_stap_colors = [
-                [2 * original_length - color[0] - 1, color[1]]
+                [2 * original_length + phase_adjust - color[0] - 1, color[1]]
                 for color in symmetric_vstrand['stap_colors']
             ]
             vstrand['stap_colors'].extend(adjusted_stap_colors)
+    
+    if phase_adjust:
+        vstrands = extend_empty_bp(vstrands, 21-phase_adjust)
 
     print("Modifications applied.")
 
