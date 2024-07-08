@@ -21,17 +21,11 @@ def install_pywin32(venv_python_executable):
     run_command(f'"{venv_python_executable}" -m pip install pywin32')
 
 def create_windows_shortcut(target, shortcut_path, description=""):
-    venv_python_executable = os.path.join(venv_dir, "Scripts", "python.exe")
     try:
-        run_command(f'"{venv_python_executable}" -c "import pythoncom"')
-        run_command(f'"{venv_python_executable}" -c "from win32com.shell import shell, shellcon"')
-    except subprocess.CalledProcessError:
-        install_pywin32(venv_python_executable)
-        run_command(f'"{venv_python_executable}" -c "import pythoncom"')
-        run_command(f'"{venv_python_executable}" -c "from win32com.shell import shell, shellcon"')
-
-    import pythoncom
-    from win32com.shell import shell, shellcon
+        import pythoncom
+        from win32com.shell import shell, shellcon
+    except ImportError:
+        raise ImportError("pywin32 not found. Please ensure it is installed in the virtual environment.")
 
     shortcut = pythoncom.CoCreateInstance(
         shell.CLSID_ShellLink, None,
@@ -40,7 +34,6 @@ def create_windows_shortcut(target, shortcut_path, description=""):
     shortcut.SetPath(target)
     shortcut.SetDescription(description)
     shortcut.SetWorkingDirectory(os.path.dirname(target))
-    shortcut.SetArguments('/k')
     
     persist_file = shortcut.QueryInterface(pythoncom.IID_IPersistFile)
     persist_file.Save(shortcut_path, 0)
@@ -74,12 +67,13 @@ run_command(f'"{python_executable}" -m pip install --upgrade pip')
 print("Installing cadnano2...")
 run_command(f'"{python_executable}" -m pip install cadnano2')
 
+# 4. Install pywin32 within the virtual environment
+print("Installing pywin32...")
+install_pywin32(python_executable)
+
 print("Setup complete. The virtual environment 'venv/cn2' is ready and cadnano2 is installed.")
 
 if os.name == "nt":
-    # Install pywin32 within the virtual environment
-    install_pywin32(python_executable)
-    
     # Windows-specific shortcut creation
     
     # Step 1: Create a batch file to activate the environment and run cadnano2
@@ -91,11 +85,16 @@ if os.name == "nt":
         file.write(f'call "{activate_bat}"\n')
         file.write(f'call "{cadnano2_exe}"\n')
     
-    # Step 2: Create a shortcut to run_cadnano2.bat on the Desktop
-    desktop = os.path.join(os.path.join(os.environ["USERPROFILE"]), "Desktop")
-    shortcut_path = os.path.join(desktop, "Run Cadnano2.lnk")
-    create_windows_shortcut(run_cadnano_bat, shortcut_path, "Activate cn2 environment and run cadnano2")
-    
-    print(f"Shortcut created at {shortcut_path}")
+    # Step 2: Use the virtual environment's Python executable to create the shortcut
+    venv_python_executable = os.path.join(venv_dir, "Scripts", "python.exe")
+    run_command(f'"{venv_python_executable}" -c "import pythoncom; from win32com.shell import shell, shellcon; '
+                f'shortcut = pythoncom.CoCreateInstance(shell.CLSID_ShellLink, None, pythoncom.CLSCTX_INPROC_SERVER, shell.IID_IShellLink); '
+                f'shortcut.SetPath(\'{run_cadnano_bat}\'); '
+                f'shortcut.SetDescription(\'Activate cn2 environment and run cadnano2\'); '
+                f'shortcut.SetWorkingDirectory(\'{os.path.dirname(run_cadnano_bat)}\'); '
+                f'persist_file = shortcut.QueryInterface(pythoncom.IID_IPersistFile); '
+                f'persist_file.Save(\'{os.path.join(os.path.join(os.environ["USERPROFILE"]), "Desktop", "Run Cadnano2.lnk")}\', 0)"')
+
+    print(f"Shortcut created at {os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop', 'Run Cadnano2.lnk')}")
 else:
     print("This script is intended to be run on a Windows system.")
