@@ -105,4 +105,4 @@ else:
     for path in zshrc_paths:
         add_alias_to_file(path, alias_command)
     
-    print("Alias added. Please restart your terminal or run 'source ~/.zshrc' to apply the changes.")
+    print("Alias added. Please restart your terminal.")
