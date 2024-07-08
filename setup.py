@@ -12,6 +12,9 @@ def run_command(command):
         if output:
             print(output.strip())
     rc = process.poll()
+    err_output = process.stderr.read().strip()
+    if err_output:
+        print(f"Error: {err_output}")
     return rc
 
 def install_pywin32():
@@ -44,6 +47,7 @@ if os.path.exists(venv_dir):
 os.makedirs(base_dir, exist_ok=True)
 
 # 1. Create a virtual environment in the "venv/cn2" directory
+print("Creating virtual environment...")
 run_command(f"{sys.executable} -m venv {venv_dir}")
 
 # 2. Activate the virtual environment
@@ -53,9 +57,11 @@ activate_script = os.path.join(venv_dir, "Scripts", "activate") if os.name == "n
 python_executable = os.path.join(venv_dir, "Scripts", "python.exe") if os.name == "nt" else os.path.join(venv_dir, "bin", "python")
 
 # 3. Upgrade pip
+print("Upgrading pip...")
 run_command(f"{python_executable} -m pip install --upgrade pip")
 
 # 4. Install cadnano2
+print("Installing cadnano2...")
 run_command(f"{python_executable} -m pip install cadnano2")
 
 print("Setup complete. The virtual environment 'venv/cn2' is ready and cadnano2 is installed.")
@@ -105,4 +111,4 @@ else:
     for path in zshrc_paths:
         add_alias_to_file(path, alias_command)
     
-    print("Alias added. Please restart your terminal.")
+    print("Alias added. Please restart your terminal or run 'source ~/.zshrc' to apply the changes.")
