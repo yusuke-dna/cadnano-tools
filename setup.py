@@ -21,8 +21,13 @@ def install_pywin32():
     run_command(f'"{sys.executable}" -m pip install pywin32')
 
 def create_windows_shortcut(target, shortcut_path, description=""):
-    import pythoncom
-    from win32com.shell import shell, shellcon
+    try:
+        import pythoncom
+        from win32com.shell import shell, shellcon
+    except ImportError:
+        install_pywin32()
+        import pythoncom
+        from win32com.shell import shell, shellcon
 
     shortcut = pythoncom.CoCreateInstance(
         shell.CLSID_ShellLink, None,
