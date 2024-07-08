@@ -87,13 +87,17 @@ if os.name == "nt":
     
     # Step 2: Use the virtual environment's Python executable to create the shortcut
     venv_python_executable = os.path.join(venv_dir, "Scripts", "python.exe")
-    run_command(f'"{venv_python_executable}" -c "import pythoncom; from win32com.shell import shell, shellcon; '
-                f'shortcut = pythoncom.CoCreateInstance(shell.CLSID_ShellLink, None, pythoncom.CLSCTX_INPROC_SERVER, shell.IID_IShellLink); '
-                f'shortcut.SetPath(\'{run_cadnano_bat}\'); '
-                f'shortcut.SetDescription(\'Activate cn2 environment and run cadnano2\'); '
-                f'shortcut.SetWorkingDirectory(\'{os.path.dirname(run_cadnano_bat)}\'); '
-                f'persist_file = shortcut.QueryInterface(pythoncom.IID_IPersistFile); '
-                f'persist_file.Save(\'{os.path.join(os.path.join(os.environ["USERPROFILE"]), "Desktop", "Run Cadnano2.lnk")}\', 0)"')
+    escaped_run_cadnano_bat = run_cadnano_bat.replace("\\", "\\\\")
+    escaped_shortcut_path = os.path.join(os.path.join(os.environ["USERPROFILE"]), "Desktop", "Run Cadnano2.lnk").replace("\\", "\\\\")
+    run_command(
+        f'"{venv_python_executable}" -c "import pythoncom; from win32com.shell import shell, shellcon; '
+        f'shortcut = pythoncom.CoCreateInstance(shell.CLSID_ShellLink, None, pythoncom.CLSCTX_INPROC_SERVER, shell.IID_IShellLink); '
+        f'shortcut.SetPath(\\"{escaped_run_cadnano_bat}\\"); '
+        f'shortcut.SetDescription(\\"Activate cn2 environment and run cadnano2\\"); '
+        f'shortcut.SetWorkingDirectory(\\"{os.path.dirname(escaped_run_cadnano_bat)}\\"); '
+        f'persist_file = shortcut.QueryInterface(pythoncom.IID_IPersistFile); '
+        f'persist_file.Save(\\"{escaped_shortcut_path}\\", 0)"'
+    )
 
     print(f"Shortcut created at {os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop', 'Run Cadnano2.lnk')}")
 else:
