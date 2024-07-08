@@ -18,7 +18,7 @@ def run_command(command):
     return rc
 
 def install_pywin32():
-    run_command(f"{sys.executable} -m pip install pywin32")
+    run_command(f'"{sys.executable}" -m pip install pywin32')
 
 def create_windows_shortcut(target, shortcut_path, description=""):
     import pythoncom
@@ -48,7 +48,7 @@ os.makedirs(base_dir, exist_ok=True)
 
 # 1. Create a virtual environment in the "venv/cn2" directory
 print("Creating virtual environment...")
-run_command(f"{sys.executable} -m venv {venv_dir}")
+run_command(f'"{sys.executable}" -m venv "{venv_dir}"')
 
 # 2. Activate the virtual environment
 activate_script = os.path.join(venv_dir, "Scripts", "activate") if os.name == "nt" else os.path.join(venv_dir, "bin", "activate")
@@ -58,11 +58,11 @@ python_executable = os.path.join(venv_dir, "Scripts", "python.exe") if os.name =
 
 # 3. Upgrade pip
 print("Upgrading pip...")
-run_command(f"{python_executable} -m pip install --upgrade pip")
+run_command(f'"{python_executable}" -m pip install --upgrade pip')
 
 # 4. Install cadnano2
 print("Installing cadnano2...")
-run_command(f"{python_executable} -m pip install cadnano2")
+run_command(f'"{python_executable}" -m pip install cadnano2')
 
 print("Setup complete. The virtual environment 'venv/cn2' is ready and cadnano2 is installed.")
 
@@ -80,7 +80,7 @@ if os.name == "nt":
     
     # Step 2: Add cadnano2 to the last line of cadnano2.bat
     with open(cadnano2_bat, "a") as file:
-        file.write(f"\ncall {cadnano2_exe}\n")
+        file.write(f'\ncall "{cadnano2_exe}"\n')
     
     # Step 3: Create a shortcut to cadnano2.bat on the Desktop
     desktop = os.path.join(os.path.join(os.environ["USERPROFILE"]), "Desktop")
