@@ -1,6 +1,32 @@
 # Cadnano Tools
 This repository contains several microtools designed to enhance the functionality of cadnano, a popular software for designing DNA nanostructures.
 
+## Setup Script
+This repository includes a `setup.py` script to automate the setup of a virtual environment and installation of necessary packages. This script ensures that all dependencies, including `cadnano2` and `pywin32` (for Windows), are installed in an isolated environment.
+
+### How to Use
+
+1. **Run the Setup Script**: Navigate to the directory containing the `setup.py` script and execute the following command:
+
+    ```bash
+    $ python3 setup.py
+    ```
+
+    This command will:
+    - Create a virtual environment in `~/venv/cn2` (or `venv\cn2` under the user's home directory on Windows).
+    - Upgrade `pip` within the virtual environment.
+    - Install `cadnano2` and other dependencies within the virtual environment.
+    - For Windows users, it will also install `pywin32` and create a desktop shortcut to run `cadnano2` under the virtual environment.
+
+2. **Using the Tools**: Once the setup is complete, you can use the various tools provided in this repository. For Mac/Linux users, you can start `cadnano2` by using the automatically added alias `cadnano2` in your rebooted terminal. For Windows users, you can start `cadnano2` by clicking the `cadnano2` shortcut created on your desktop.
+
+### Requirements
+
+- Python 3.7 or later
+- For Windows: The script handles installation of `pywin32` within the virtual environment.
+
+---
+
 ## Semi-Autobreak
 A Python script that supports users' semi-automatic optimisation of the breaking points of staples in DNA origami design. It removes existing staple breaks and introduces breaks with the following criteria if possible. If not possible, or if the user colour the staple in black, the strand is left intact. Users will attempt to rearrange the crossover position referring to the generated reports and repeatedly run the script to turn all strands blue (or cyan). Merged with `Seeding Domain Tracer` on 19th Sept 2023. 
 
