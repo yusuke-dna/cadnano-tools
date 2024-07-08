@@ -67,13 +67,11 @@ run_command(f'"{python_executable}" -m pip install --upgrade pip')
 print("Installing cadnano2...")
 run_command(f'"{python_executable}" -m pip install cadnano2')
 
-# 4. Install pywin32 within the virtual environment
-print("Installing pywin32...")
-install_pywin32(python_executable)
-
-print("Setup complete. The virtual environment 'venv/cn2' is ready and cadnano2 is installed.")
-
 if os.name == "nt":
+    # 4. Install pywin32 within the virtual environment
+    print("Installing pywin32...")
+    install_pywin32(python_executable)
+
     # Windows-specific shortcut creation
     
     # Step 1: Create a batch file to activate the environment and run cadnano2
@@ -88,7 +86,7 @@ if os.name == "nt":
     # Step 2: Use the virtual environment's Python executable to create the shortcut
     venv_python_executable = os.path.join(venv_dir, "Scripts", "python.exe")
     escaped_run_cadnano_bat = run_cadnano_bat.replace("\\", "\\\\")
-    escaped_shortcut_path = os.path.join(os.path.join(os.environ["USERPROFILE"]), "Desktop", "Run Cadnano2.lnk").replace("\\", "\\\\")
+    escaped_shortcut_path = os.path.join(os.path.join(os.environ["USERPROFILE"]), "Desktop", "cadnano2.lnk").replace("\\", "\\\\")
     run_command(
         f'"{venv_python_executable}" -c "import pythoncom; from win32com.shell import shell, shellcon; '
         f'shortcut = pythoncom.CoCreateInstance(shell.CLSID_ShellLink, None, pythoncom.CLSCTX_INPROC_SERVER, shell.IID_IShellLink); '
@@ -101,4 +99,26 @@ if os.name == "nt":
 
     print(f"Shortcut created at {os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop', 'Run Cadnano2.lnk')}")
 else:
-    print("This script is intended to be run on a Windows system.")
+    # Non-Windows: Define the alias you want to add
+    alias_command = "alias activate_cn2='source ~/venv/cn2/bin/activate && cadnano2'"
+    
+    # Define the paths to common zsh configuration files
+    zshrc_paths = [
+        os.path.expanduser("~/.zshrc"),
+        os.path.expanduser("~/.zprofile"),
+        os.path.expanduser("~/.profile"),
+        os.path.expanduser("~/.bash_profile")
+    ]
+    
+    # Function to add alias to the specified file if it exists
+    def add_alias_to_file(file_path, alias_command):
+        if os.path.exists(file_path):
+            with open(file_path, "a") as file:
+                file.write(f"\n{alias_command}\n")
+            print(f"Alias added to {file_path}")
+    
+    # Add the alias to all relevant configuration files
+    for path in zshrc_paths:
+        add_alias_to_file(path, alias_command)
+    
+    print("Alias added. Please restart your terminal to apply the changes.")
