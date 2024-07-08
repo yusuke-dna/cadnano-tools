@@ -17,17 +17,21 @@ def run_command(command):
         print(f"Error: {err_output}")
     return rc
 
-def install_pywin32():
-    run_command(f'"{sys.executable}" -m pip install pywin32')
+def install_pywin32(venv_python_executable):
+    run_command(f'"{venv_python_executable}" -m pip install pywin32')
 
 def create_windows_shortcut(target, shortcut_path, description=""):
+    venv_python_executable = os.path.join(venv_dir, "Scripts", "python.exe")
     try:
-        import pythoncom
-        from win32com.shell import shell, shellcon
-    except ImportError:
-        install_pywin32()
-        import pythoncom
-        from win32com.shell import shell, shellcon
+        run_command(f'"{venv_python_executable}" -c "import pythoncom"')
+        run_command(f'"{venv_python_executable}" -c "from win32com.shell import shell, shellcon"')
+    except subprocess.CalledProcessError:
+        install_pywin32(venv_python_executable)
+        run_command(f'"{venv_python_executable}" -c "import pythoncom"')
+        run_command(f'"{venv_python_executable}" -c "from win32com.shell import shell, shellcon"')
+
+    import pythoncom
+    from win32com.shell import shell, shellcon
 
     shortcut = pythoncom.CoCreateInstance(
         shell.CLSID_ShellLink, None,
@@ -41,8 +45,11 @@ def create_windows_shortcut(target, shortcut_path, description=""):
     persist_file = shortcut.QueryInterface(pythoncom.IID_IPersistFile)
     persist_file.Save(shortcut_path, 0)
 
+# Get the home directory
+home_dir = os.path.expanduser("~")
+
 # Define the directory structure
-base_dir = "venv"
+base_dir = os.path.join(home_dir, "venv")
 venv_dir = os.path.join(base_dir, "cn2")
 
 # Remove the existing directory if it exists
@@ -56,22 +63,22 @@ os.makedirs(base_dir, exist_ok=True)
 print("Creating virtual environment...")
 run_command(f'"{sys.executable}" -m venv "{venv_dir}"')
 
-# Note: Instead of using 'source' which is a shell built-in command, we use the full path to the Python executable within the venv
-python_executable = os.path.join(venv_dir, "Scripts", "python.exe")
+# Use the Python executable from within the virtual environment
+python_executable = os.path.join(venv_dir, "Scripts", "python.exe") if os.name == "nt" else os.path.join(venv_dir, "bin", "python")
 
-# 3. Upgrade pip
+# 2. Upgrade pip
 print("Upgrading pip...")
 run_command(f'"{python_executable}" -m pip install --upgrade pip')
 
-# 4. Install cadnano2
+# 3. Install cadnano2
 print("Installing cadnano2...")
 run_command(f'"{python_executable}" -m pip install cadnano2')
 
 print("Setup complete. The virtual environment 'venv/cn2' is ready and cadnano2 is installed.")
 
 if os.name == "nt":
-    # Install pywin32 if not already installed
-    install_pywin32()
+    # Install pywin32 within the virtual environment
+    install_pywin32(python_executable)
     
     # Windows-specific shortcut creation
     
