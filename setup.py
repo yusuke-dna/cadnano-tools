@@ -97,7 +97,7 @@ if os.name == "nt":
         f'persist_file.Save(\\"{escaped_shortcut_path}\\", 0)"'
     )
 
-    print(f"Shortcut created at {os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop', 'Run Cadnano2.lnk')}")
+    print(f"Shortcut created at {os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop', 'cadnano2.lnk')}")
 else:
     # Non-Windows: Define the alias you want to add
     alias_command = "alias cadnano2='source ~/venv/cn2/bin/activate && cadnano2'"
