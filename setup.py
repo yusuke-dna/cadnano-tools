@@ -18,7 +18,7 @@ def run_command(command):
     return rc
 
 def install_pywin32(venv_python_executable):
-    run_command(f'"{venv_python_executable}" -m pip install pywin32')
+    run_command(f'"{venv_python_executable}" -m pip install pywin32 --trusted-host pypi.org --trusted-host files.pythonhosted.org')
 
 def create_windows_shortcut(target, shortcut_path, description=""):
     try:
@@ -59,13 +59,13 @@ run_command(f'"{sys.executable}" -m venv "{venv_dir}"')
 # Use the Python executable from within the virtual environment
 python_executable = os.path.join(venv_dir, "Scripts", "python.exe") if os.name == "nt" else os.path.join(venv_dir, "bin", "python")
 
-# 2. Upgrade pip
-print("Upgrading pip...")
-run_command(f'"{python_executable}" -m pip install --upgrade pip')
+# 2. Upgrade pip and install setuptools
+print("Upgrading pip and installing setuptools...")
+run_command(f'"{python_executable}" -m pip install --upgrade pip setuptools --trusted-host pypi.org --trusted-host files.pythonhosted.org')
 
 # 3. Install cadnano2
 print("Installing cadnano2...")
-run_command(f'"{python_executable}" -m pip install cadnano2')
+run_command(f'"{python_executable}" -m pip install cadnano2 --trusted-host pypi.org --trusted-host files.pythonhosted.org')
 
 if os.name == "nt":
     # 4. Install pywin32 within the virtual environment
