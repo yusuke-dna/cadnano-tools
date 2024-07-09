@@ -22,7 +22,7 @@ This repository includes a `setup.py` script to automate the setup of a virtual 
 
 ### Requirements
 
-- Python 3.7 or later
+- Python 3.6 or later
 - For Windows: The script handles installation of `pywin32` within the virtual environment.
 
 ---
