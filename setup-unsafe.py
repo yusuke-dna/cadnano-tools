@@ -1,3 +1,4 @@
+# For older Python version that does not support SSL.
 import subprocess
 import sys
 import os
@@ -38,57 +39,53 @@ def create_windows_shortcut(target, shortcut_path, description=""):
     persist_file = shortcut.QueryInterface(pythoncom.IID_IPersistFile)
     persist_file.Save(shortcut_path, 0)
 
-# Get the home directory
-home_dir = os.path.expanduser("~")
-
-# Define the directory structure
-base_dir = os.path.join(home_dir, "venv")
-venv_dir = os.path.join(base_dir, "cn2")
+# Define constants
+HOME_DIR = os.path.expanduser("~")
+BASE_DIR = os.path.join(HOME_DIR, "venv")
+VENV_DIR = os.path.join(BASE_DIR, "cn2")
+PYTHON_EXECUTABLE = os.path.join(VENV_DIR, "Scripts", "python.exe") if os.name == "nt" else os.path.join(VENV_DIR, "bin", "python")
+DESKTOP_PATH = os.path.join(os.path.join(os.environ["USERPROFILE"]), "Desktop") if os.name == "nt" else None  # Only used for Win system.
 
 # Remove the existing directory if it exists
-if os.path.exists(venv_dir):
-    shutil.rmtree(venv_dir)
+if os.path.exists(VENV_DIR):
+    shutil.rmtree(VENV_DIR)
 
 # Create the base directory if it doesn't exist
-os.makedirs(base_dir, exist_ok=True)
+os.makedirs(BASE_DIR, exist_ok=True)
 
 # 1. Create a virtual environment in the "venv/cn2" directory
 print("Creating virtual environment...")
-run_command(f'"{sys.executable}" -m venv "{venv_dir}"')
+run_command(f'"{sys.executable}" -m venv "{VENV_DIR}"')
 
-# Use the Python executable from within the virtual environment
-python_executable = os.path.join(venv_dir, "Scripts", "python.exe") if os.name == "nt" else os.path.join(venv_dir, "bin", "python")
-
-# 2. Upgrade pip
-print("Upgrading pip...")
-run_command(f'"{python_executable}" -m pip install --upgrade pip --trusted-host pypi.org --trusted-host files.pythonhosted.org')
+# 2. Upgrade pip and install setuptools
+print("Upgrading pip and installing setuptools...")
+run_command(f'"{PYTHON_EXECUTABLE}" -m pip install --upgrade pip setuptools --trusted-host pypi.org --trusted-host files.pythonhosted.org')
 
 # 3. Install cadnano2
 print("Installing cadnano2...")
-run_command(f'"{python_executable}" -m pip install cadnano2 --trusted-host pypi.org --trusted-host files.pythonhosted.org')
+run_command(f'"{PYTHON_EXECUTABLE}" -m pip install cadnano2 --trusted-host pypi.org --trusted-host files.pythonhosted.org')
 
 if os.name == "nt":
     # 4. Install pywin32 within the virtual environment
     print("Installing pywin32...")
-    install_pywin32(python_executable)
+    install_pywin32(PYTHON_EXECUTABLE)
 
     # Windows-specific shortcut creation
     
     # Step 1: Create a batch file to activate the environment and run cadnano2
-    activate_bat = os.path.join(venv_dir, "Scripts", "activate.bat")
-    run_cadnano_bat = os.path.join(venv_dir, "Scripts", "run_cadnano2.bat")
-    cadnano2_exe = os.path.join(venv_dir, "Scripts", "cadnano2.exe")
+    ACTIVATE_BAT = os.path.join(VENV_DIR, "Scripts", "activate.bat")
+    RUN_CADNANO_BAT = os.path.join(VENV_DIR, "Scripts", "run_cadnano2.bat")
+    CADNANO2_EXE = os.path.join(VENV_DIR, "Scripts", "cadnano2.exe")
     
-    with open(run_cadnano_bat, "w") as file:
-        file.write(f'call "{activate_bat}"\n')
-        file.write(f'call "{cadnano2_exe}"\n')
+    with open(RUN_CADNANO_BAT, "w") as file:
+        file.write(f'call "{ACTIVATE_BAT}"\n')
+        file.write(f'call "{CADNANO2_EXE}"\n')
     
     # Step 2: Use the virtual environment's Python executable to create the shortcut
-    venv_python_executable = os.path.join(venv_dir, "Scripts", "python.exe")
-    escaped_run_cadnano_bat = run_cadnano_bat.replace("\\", "\\\\")
-    escaped_shortcut_path = os.path.join(os.path.join(os.environ["USERPROFILE"]), "Desktop", "cadnano2.lnk").replace("\\", "\\\\")
+    escaped_run_cadnano_bat = RUN_CADNANO_BAT.replace("\\", "\\\\")
+    escaped_shortcut_path = os.path.join(DESKTOP_PATH, "cadnano2.lnk").replace("\\", "\\\\")
     run_command(
-        f'"{venv_python_executable}" -c "import pythoncom; from win32com.shell import shell, shellcon; '
+        f'"{PYTHON_EXECUTABLE}" -c "import pythoncom; from win32com.shell import shell, shellcon; '
         f'shortcut = pythoncom.CoCreateInstance(shell.CLSID_ShellLink, None, pythoncom.CLSCTX_INPROC_SERVER, shell.IID_IShellLink); '
         f'shortcut.SetPath(\\"{escaped_run_cadnano_bat}\\"); '
         f'shortcut.SetDescription(\\"Activate cn2 environment and run cadnano2\\"); '
@@ -97,13 +94,13 @@ if os.name == "nt":
         f'persist_file.Save(\\"{escaped_shortcut_path}\\", 0)"'
     )
 
-    print(f"Shortcut created at {os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop', 'cadnano2.lnk')}")
+    print(f"Shortcut created at {os.path.join(DESKTOP_PATH, 'cadnano2.lnk')}")
 else:
     # Non-Windows: Define the alias you want to add
     alias_command = "alias cadnano2='source ~/venv/cn2/bin/activate && cadnano2'"
     
-    # Define the paths to common zsh configuration files
-    zshrc_paths = [
+    # Define the paths to common shell configuration files
+    shell_config_paths = [
         os.path.expanduser("~/.zshrc"),
         os.path.expanduser("~/.zprofile"),
         os.path.expanduser("~/.profile"),
@@ -118,7 +115,7 @@ else:
             print(f"Alias added to {file_path}")
     
     # Add the alias to all relevant configuration files
-    for path in zshrc_paths:
+    for path in shell_config_paths:
         add_alias_to_file(path, alias_command)
     
     print("Alias added. Please restart your terminal to apply the changes.")
