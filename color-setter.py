@@ -1,3 +1,4 @@
+# This file is a deprecated copy of color-resetter.py, made by mistake. This file will be removed soon. 
 try:
     import argparse
     import json
