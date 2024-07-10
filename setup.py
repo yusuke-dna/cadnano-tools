@@ -99,22 +99,32 @@ else:
     alias_command = "alias cadnano2='source ~/venv/cn2/bin/activate && cadnano2'"
     
     # Define the paths to common shell configuration files
-    shell_config_paths = [
-        os.path.expanduser("~/.zshrc"),
-        os.path.expanduser("~/.zprofile"),
-        os.path.expanduser("~/.profile"),
-        os.path.expanduser("~/.bash_profile")
-    ]
-    
-    # Function to add alias to the specified file if it exists
+    zprofile_path = os.path.expanduser("~/.zprofile")
+    zshrc_path = os.path.expanduser("~/.zshrc")
+    bash_profile_path = os.path.expanduser("~/.bash_profile")
+    profile_path = os.path.expanduser("~/.profile")
+
+    # Function to add alias to the specified file if it exists and doesn't already contain the alias
     def add_alias_to_file(file_path, alias_command):
         if os.path.exists(file_path):
+            with open(file_path, "r") as file:
+                if alias_command in file.read():
+                    print(f"Alias already exists in {file_path}")
+                    return
             with open(file_path, "a") as file:
                 file.write(f"\n{alias_command}\n")
             print(f"Alias added to {file_path}")
     
-    # Add the alias to all relevant configuration files
-    for path in shell_config_paths:
-        add_alias_to_file(path, alias_command)
+    # Check and add alias to the first existing file in the order of preference
+    if os.path.exists(zprofile_path):
+        add_alias_to_file(zprofile_path, alias_command)
+    elif os.path.exists(zshrc_path):
+        add_alias_to_file(zshrc_path, alias_command)
+    elif os.path.exists(bash_profile_path):
+        add_alias_to_file(bash_profile_path, alias_command)
+    elif os.path.exists(profile_path):
+        add_alias_to_file(profile_path, alias_command)
+    else:
+        print("No shell configuration file found to add alias.")
     
     print("Alias added. Please restart your terminal to apply the changes.")
