@@ -14,7 +14,7 @@ This repository includes a `setup.py` script to automate the setup of a virtual 
 
     This command will:
     - Create a virtual environment in `~/venv/cn2` (or `venv\cn2` under the user's home directory on Windows).
-    - Upgrade `pip` within the virtual environment.
+    - Upgrade `pip` and `setuptools` within the virtual environment.
     - Install `cadnano2` and other dependencies within the virtual environment.
     - For Windows users, it will also install `pywin32` and create a desktop shortcut to run `cadnano2` under the virtual environment.
 
@@ -22,10 +22,7 @@ This repository includes a `setup.py` script to automate the setup of a virtual 
 
 ### Requirements
 
-- Python 3.6 or later
-- For Windows: The script handles installation of `pywin32` within the virtual environment.
-
----
+- Python 3.9.13 or later for Windows, Python 3.8.10 or later for Mac.
 
 ## Semi-Autobreak
 A Python script that supports users' semi-automatic optimisation of the breaking points of staples in DNA origami design. It removes existing staple breaks and introduces breaks with the following criteria if possible. If not possible, or if the user colour the staple in black, the strand is left intact. Users will attempt to rearrange the crossover position referring to the generated reports and repeatedly run the script to turn all strands blue (or cyan). Merged with `Seeding Domain Tracer` on 19th Sept 2023. 
