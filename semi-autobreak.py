@@ -21,8 +21,8 @@ def get_args():
     parser.add_argument('-color', '-colour' '-intermediate' '-i', dest='color', action='store_true', help='Leave intermediate JSON file displaying autobroken staples in green')
     parser.add_argument('-limit', '-threshold', '-t', dest='limit', type=int, default=5000, help='5000 by default. Limiter to prevent combinatorial explosion. The threshold to apply filter (below) breaking pattern variation. For low restriction designs (long average domain length), weight (**(optimal_seed_len/average_domain_len)) is automatically applied to reduce wasteful calculation cost, resulting in no siginficant differences')
     parser.add_argument('-filter', '-f', dest='filter', type=int, default=100, help='100 by default. Filter to prevent combinatorial explosion. The pattern exceeding threshold (above) will be filtered to this number. For low restriction designs (long average domain length), weight (**(optimal_seed_len/average_domain_len)) is automatically applied to reduce wasteful calculation cost, resulting in no siginficant differences')
-    parser.add_argument('-distance', '-d', dest='distance', type=int, default=3, help='3 by default (or 4 if square lattice, apart from the case path panel width is multiple of 672). Distance from 5-/3-end of staple and staple crossover (not considering scaffold crossover)')   
-    return parser.parse_args()
+    parser.add_argument('-distance', '-d', dest='distance', type=int, default=3, help='3 for honeycomb lattice or 4 for square lattice by default, apart from the case path panel width is multiple of 672, regarding it as honeycomb lattice. Distance from 5-/3-end of staple and staple crossover (not considering scaffold crossover)')   
+    parser.add_argument('-penalty', '-p', dest='penalty', type=float, default=0.3, help='0.3 by default. Penalty for acceptable seed length vs optimal. The score of acceptable seed length is multiplied by this value.')
 
 def load_json_file(filename: str) -> dict: 
     try:
@@ -230,7 +230,7 @@ def short_domain_counter(count_list,short_domain_list) -> list:
         count_list[helix_id] += 1
     return count_list
 
-def autobreak_search(input_seq: str, min_length=args.min, max_length=args.max, acceptable_seed_len=args.acceptable, optimal_seed_len=args.optimal, limit_num=args.limit, filter_num=args.filter, distance=distance) -> list:
+def autobreak_search(input_seq: str, min_length=args.min, max_length=args.max, acceptable_seed_len=args.acceptable, optimal_seed_len=args.optimal, limit_num=args.limit, filter_num=args.filter, distance=distance, penalty_rate=args.penalty) -> list:
     char_counts = {}
     middle_seq = input_seq.strip('^!')
     i = 0   # index of middle_seq, to specify a letter in the sequence
@@ -265,7 +265,7 @@ def autobreak_search(input_seq: str, min_length=args.min, max_length=args.max, a
             if count >= optimal_seed_len or seeding_domain == 1:
                 seeding_domain = 1
             elif count >= acceptable_seed_len:
-                seeding_domain = 0.3        # 0.3 fold penalty to acceptable strand
+                seeding_domain = penalty_rate        # 0.3 fold default penalty to acceptable strand
         return seeding_domain * ( 2 - (len(sequence) - min_length) / (max_length - min_length) )    # length penalty: Max length gets half score than min length. Besides, shorter split gives more number of split strands each of them has score.
 
     patterns = [{'split_length': [], 'score': 0, 'remaining': input_seq}]
