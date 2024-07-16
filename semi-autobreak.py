@@ -290,7 +290,7 @@ def autobreak_search(input_seq: str, min_length=args.min, max_length=args.max, a
             for k in range(min_length, min(max_length + 1, len(remaining_seq) - min_length) + 1):
                 if (
                     remaining_seq[k - distance] == remaining_seq[k + distance - 1] and # Breaking point is in the middle of the continuous domain, twice length as the distance specified.
-					remaining_seq[k] != '^' and		# loop and brush are excluded from breaking points
+                    remaining_seq[k] != '^' and		# loop and brush are excluded from breaking points
                     score_seq(remaining_seq[:k]) and # Score of the upstream strand should be larger than 0
                     score_seq(remaining_seq[k:]) and # Score of the downstream strand should be larger than 0
                     len(remaining_seq[:k].strip('^')) >= min_length and # Core length of the upstream strand should be larger than min_length
