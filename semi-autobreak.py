@@ -75,8 +75,8 @@ def trace_domain(blueprint: dict, helix_num: int, pos_num: int, strand_id: int, 
     tracer_hel = helix_num
     last_tracer_pos = tracer_pos
     last_tracer_hel = tracer_hel
-    alphabet = [chr(i) for i in range(97,123)] * 10 # loops 10 times if alphabet is not enough 
-    alphabet.extend(['!'] * 1000)
+    alphabet = [chr(i) for i in range(97,123)] * 50 # loops 50 times if alphabet is not enough 
+    alphabet.extend(['!'] * 5000)
     domain_num = 0
     count = 0
     max_count = 0
