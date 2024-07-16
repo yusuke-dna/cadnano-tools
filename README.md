@@ -92,7 +92,6 @@ _Updated on 2023-09-19_
 - Inserts and skips (for curvature and twist) are not counted for now.
 - The script recognises crossover only when the base positions of two ends are kept same (e.g. 1[118] to 10[118]).
 - Short limit `min` only consider hybridisation (bp) length while long limit `max` includes ssDNA length, resulted in unexpected behaviour when ssDNA is too long.
-- Distance `distance` does not care scaffold crossover for now.
 
 ## Simple Multiplier
 
