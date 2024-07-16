@@ -44,21 +44,23 @@ if optimal_seed_len < acceptable_seed_len:
     raise ValueError(f'optimal seeding length {optimal_seed_len} shuold be larger than acceptable seed length {acceptable_seed_len}') 
 blueprint = load_json_file(args.input_file)
 if blueprint:
-    single_array = True
-    sorted_vstrands = sorted(blueprint['vstrands'], key=lambda x: x['col'])
-    sorted_vstrands = sorted(sorted_vstrands, key=lambda x: x['row'])
+    single_array = True  # This evaluates if the design is a single layer structure or not.
+    sorted_vstrands = sorted(blueprint['vstrands'], key=lambda x: (x['row'], x['col']))
     row = sorted_vstrands[0]['row']
     col = sorted_vstrands[0]['col']
-    debug = []
-    for i in range(len(sorted_vstrands)):
-        if sorted_vstrands[i]['row'] == row ^ sorted_vstrands[i]['col'] == col:
+    for vstrand in sorted_vstrands:
+        if not (vstrand['row'] == row or vstrand['col'] == col):
             single_array = False
-    if args.distance != 3:
+            break
+
+    print(f"The design is {'single' if single_array else 'multi'}-layer structure.")
+
+    if args.distance != 3:  # if distance is not default, it is set as user defined.
         distance = args.distance
     elif len(blueprint['vstrands'][0]['scaf']) % 21 == 0:
-        distance = args.distance + args.distance * single_array
+        distance = args.distance + args.distance * single_array  # 3 for honeycomb lattice, 6 for single layer structure on honeycomb lattice.
     else:
-        distance = 4 + 4 * single_array
+        distance = 4 + 4 * single_array  # 4 for square lattice, 8 for single layer structure on square lattice.
 
     # reverse dict to convert num in json file to vstrands list index.
     num2id = {}
@@ -118,7 +120,7 @@ def trace_domain(blueprint: dict, helix_num: int, pos_num: int, strand_id: int, 
     end = str(last_tracer_hel) + '[' + str(last_tracer_pos) + '],'
     total_len = len(domain_string)
     core_len = len(domain_string.strip("^"))
-    if blueprint['vstrands'][num2id[helix_num]]['stap_colors'][strand_id][1] == 0:         # black is left unprocessed.
+    if blueprint['vstrands'][num2id[helix_num]]['stap_colors'][strand_id][1] == 16777215: # White is left unprocessed.
         pass
     elif core_len < min_length:
         blueprint['vstrands'][num2id[helix_num]]['stap_colors'][strand_id][1] = 16776960  # Yellow when the sequence is too short. Only for short limit, ssDNA region is excluded.
@@ -239,7 +241,7 @@ def autobreak_search(input_seq: str, min_length=args.min, max_length=args.max, a
     char_counts = {j: 0}
     char = 'a'
     while i < len(middle_seq):
-        if middle_seq[i] == char and char != '^':   # if the letter is same as previous one, and not ssDNA region, increment the domein length
+        if middle_seq[i] == char and char != '^':   # if the letter is same as previous one, and not ssDNA region, increment the domain length
             char_counts[j] += 1
         else:
             char = middle_seq[i]
@@ -249,12 +251,11 @@ def autobreak_search(input_seq: str, min_length=args.min, max_length=args.max, a
     average_domain_length = sum(char_counts.values()) / (j + 1)
     output_string = f'limit/filter weight: ^({acceptable_seed_len/average_domain_length:.3f}) is applied.' if average_domain_length > acceptable_seed_len else ''
     print(f"average domain length is {average_domain_length:.3f}. {output_string}")
-    def score_seq(sequence: str) -> float:  # at present the location of seeding domain is not considered
+    def score_seq(sequence: str) -> float:
         seeding_domain = 0
         count = 0
         last_letter = '!'
         for i in range(len(sequence)):
-            # check if i-th letter is upper case
             if last_letter != sequence[i]:
                 count = 0
                 last_letter = sequence[i]
@@ -266,37 +267,46 @@ def autobreak_search(input_seq: str, min_length=args.min, max_length=args.max, a
             if count >= optimal_seed_len or seeding_domain == 1:
                 seeding_domain = 1
             elif count >= acceptable_seed_len:
-                seeding_domain = penalty_rate        # 0.3 fold default penalty to acceptable strand
-        return seeding_domain * ( 2 - (len(sequence) - min_length) / (max_length - min_length) )    # length penalty: Max length gets half score than min length. Besides, shorter split gives more number of split strands each of them has score.
+                seeding_domain = penalty_rate  # 0.3 fold default penalty to acceptable strand
+        return seeding_domain * (2 - (len(sequence) - min_length) / (max_length - min_length))  # length penalty: Max length gets half score than min length. Besides, shorter split gives more number of split strands each of them has score (gaining up total score).
 
-    patterns = [{'split_length': [], 'score': 0, 'remaining': input_seq}]
-    completed = False
-    final_patterns = []
+    patterns = [{'split_length': [], 'score': 0, 'remaining': input_seq}]   # Initial state of the "patterns" list.
+    completed = False   # Flag to indicate if the all search is completed
+    final_patterns = [] # List to store patterns that are completed
 
     while not completed:
         new_patterns = []
         for pattern in patterns:
             remaining_seq = pattern['remaining']
             
-            # If the remaining sequence (excluding single strand region) is less than min_length, consider this pattern completed
+            # If the remaining sequence (excluding single strand region) is less than min_length, consider this specific pattern completed
             core_remaining_seq = remaining_seq.strip("^")
             if len(core_remaining_seq) < min_length:
                 final_patterns.append(pattern)
-                continue
+                continue    # completed tag is not set at this point, to keep searching from other patterns.
             
             # If there's no valid split for this pattern, also consider it completed
             valid_split_found = False
-            for k in range(min_length, min(max_length + 1, len(remaining_seq) - 6)):
-                if k + distance - 1 < len(remaining_seq) and remaining_seq[k - distance] == remaining_seq[k + distance - 1] and score_seq(remaining_seq[:k]) and score_seq(remaining_seq[k:]) and len(remaining_seq[k:].strip("^")) >= min_length and remaining_seq[k] != '^': # minimum logic to avoid loop break is added.
+            for k in range(min_length, min(max_length + 1, len(remaining_seq) - min_length) + 1):
+                if (
+                    remaining_seq[k - distance] == remaining_seq[k + distance - 1] and # Breaking point is in the middle of the continuous domain, twice length as the distance specified.
+                    score_seq(remaining_seq[:k]) and # Score of the upstream strand should be larger than 0
+                    score_seq(remaining_seq[k:]) and # Score of the downstream strand should be larger than 0
+                    len(remaining_seq[:k].strip('^')) >= min_length and # Core length of the upstream strand should be larger than min_length
+                    len(remaining_seq[k:].strip('^')) >= min_length # Core length of the upstream strand should be larger than min_length
+                ): # minimum logic to avoid loop break is added.
                     valid_split_found = True
                     split_length = pattern['split_length'] + [k]
-                    score = pattern['score'] + score_seq(remaining_seq[:k])
+                    if len(remaining_seq[:k].strip('^')) >= min_length: # if the core length is shorter than min_length, the split is not valid
+                        score = pattern['score'] + score_seq(remaining_seq[:k])
+                    else:
+                        score = 0
                     new_patterns.append({'split_length': split_length, 'score': score, 'remaining': remaining_seq[k:]})
                     
             if not valid_split_found:
                 final_patterns.append(pattern)
-        weight_limit = int(limit_num ** (min(1, acceptable_seed_len/average_domain_length))) # if the strand is continuous sequence, apply weight to limit to reduce wasteful calculation
-        weight_filter = int(filter_num ** (min(1, acceptable_seed_len/average_domain_length))) # if the strand is continuous sequence, apply weight to limit to reduce wasteful calculation
+        weight_limit = int(limit_num ** (min(1, optimal_seed_len/average_domain_length))) # if the strand is continuous sequence, apply weight to limit to reduce wasteful calculation
+        weight_filter = int(filter_num ** (min(1, optimal_seed_len/average_domain_length))) # if the strand is continuous sequence, apply weight to limit to reduce wasteful calculation
         if not new_patterns:  # No new patterns found in this iteration
             completed = True
         elif len(new_patterns) > weight_limit:  # for each cycle, if the pattern exceed limit, filtered to top 1000th score, with risk of listing local optimum.
@@ -375,7 +385,9 @@ def break_3_end(blueprint: dict, hel_num: int, pos_num: int, split_length: int) 
 def autoconnect(blueprint: dict) -> dict:
     staple_list = {}
     for helix_id, helix in enumerate(blueprint['vstrands']):
-        for strand_id, strand in enumerate(helix['stap_colors']):
+        for strand_id, strand in enumerate(helix['stap_colors']):   # Strand ID is a index of stap_colors list, unused in this mehtod.
+            if strand[1] == 16777215 : # if the strand is white, skip
+                continue
             if id2num[helix_id] not in staple_list:
                 staple_list[id2num[helix_id]] = []
             staple_list[id2num[helix_id]].append(strand[0])
@@ -416,9 +428,9 @@ def reconnect_breaks(blueprint: dict, hel_num: int, pos_num: int) -> dict:
         if blueprint['vstrands'][num2id[last_tracer_hel]]['stap'][last_tracer_pos + direction][0] == -1 and blueprint['vstrands'][num2id[last_tracer_hel]]['stap'][last_tracer_pos + direction][1] == -1 and \
            blueprint['vstrands'][num2id[last_tracer_hel]]['stap'][last_tracer_pos + direction][2] != -1 and blueprint['vstrands'][num2id[last_tracer_hel]]['stap'][last_tracer_pos + direction][3] != -1:
             if not (last_tracer_hel == start_hel and last_tracer_pos + direction == start_pos) :    # exclude circular connection
-                # fill gap and remove the color of connected staple, only when the 3' strand is not black.
+                # fill gap and remove the color of connected staple, only when the 3' strand is not white.
                 for i in range(len(blueprint['vstrands'][num2id[last_tracer_hel]]['stap_colors'])):
-                    if blueprint['vstrands'][num2id[last_tracer_hel]]['stap_colors'][i][0] == last_tracer_pos + direction and blueprint['vstrands'][num2id[last_tracer_hel]]['stap_colors'][i][1] == 0: # Black strand is left intact, for manual editing.
+                    if blueprint['vstrands'][num2id[last_tracer_hel]]['stap_colors'][i][0] == last_tracer_pos + direction and blueprint['vstrands'][num2id[last_tracer_hel]]['stap_colors'][i][1] == 16777215: # White strand is left intact, for manual editing.
                         end_flag = True
                         print("Strand: " + str(start_hel) + "[" + str(start_pos) + "] was left broken as specified")
                     elif blueprint['vstrands'][num2id[last_tracer_hel]]['stap_colors'][i][0] == last_tracer_pos + direction:
@@ -464,3 +476,7 @@ if blueprint:
                 os.remove('domain_report_autoconnect.csv')
             if os.path.exists('output_autoconnect.json'):
                 os.remove('output_autoconnect.json')
+
+
+# Print options for reference
+print(f"Options: min_length: {min_length}, max_length: {max_length}, optimal_seed_len: {optimal_seed_len}, acceptable_seed_len: {acceptable_seed_len}, distance: {distance}, penalty_rate: {args.penalty}, filter: {args.filter}, limit: {args.limit}")

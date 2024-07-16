@@ -25,7 +25,7 @@ This repository includes a `setup.py` script to automate the setup of a virtual 
 - Python 3.9.13 or later for Windows, Python 3.8.10 or later for Mac.
 
 ## Semi-Autobreak
-A Python script that supports users' semi-automatic optimisation of the breaking points of staples in DNA origami design. It removes existing staple breaks and introduces breaks with the following criteria if possible. If not possible, ~~or if the user colour the staple in black,~~ the strand is left intact. Users will attempt to rearrange the crossover position referring to the generated reports and repeatedly run the script to turn all strands blue (or cyan). Merged with `Seeding Domain Tracer` on 19th Sept 2023.
+A Python script that supports users' semi-automatic optimisation of the breaking points of staples in DNA origami design. It removes existing staple breaks and introduces breaks with the following criteria if possible. If not possible, or if the user colour the staple in white (#FFFFFF), the strand is left intact (5-end position of white staple strand is preserved). Users will attempt to rearrange the crossover position referring to the generated reports and repeatedly run the script to turn all strands blue (or cyan). Merged with `Seeding Domain Tracer` on 19th Sept 2023.
 
 ### Criteria
 - All staples should have a seeding domain, continuous hybridisation to the scaffold without staple/scaffold crossover, ≥ 12 nt or, preferably, ≥ 14 nt. (configurable by optional arguments `-acceptable` and `-optimal`)
