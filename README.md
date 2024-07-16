@@ -2,7 +2,7 @@
 This repository contains several microtools designed to enhance the functionality of cadnano, a popular software for designing DNA nanostructures.
 
 ## Setup Script
-This repository includes a `setup.py` script to automate the setup of a virtual environment and installation of necessary packages. This script ensures that all dependencies, including `cadnano2` and `pywin32` (for Windows), are installed in an isolated environment.
+`setup.py` is a script to automate the setup of a virtual environment and installation of necessary packages. This script ensures that all dependencies, including `cadnano2` and `pywin32` (for Windows), are installed in an isolated environment.
 
 ### How to Use
 
@@ -11,7 +11,10 @@ This repository includes a `setup.py` script to automate the setup of a virtual 
     ```bash
     $ python3 setup.py
     ```
-
+    In case the Python version does not support SSL, you can add an argument to tunnel the SSL connection.
+    ```bash
+    $ python3 setup.py -unsafe
+    ```
     This command will:
     - Create a virtual environment in `~/venv/cn2` (or `venv\cn2` under the user's home directory on Windows).
     - Upgrade `pip` and `setuptools` within the virtual environment.
