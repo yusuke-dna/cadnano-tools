@@ -72,6 +72,7 @@ The script will generate several output files: `output.json`, `crossover_report.
 - `-limit [number]`: 5000 by default. Limiter to prevent combinatorial explosion. The threshold to apply pruning filter (below) breaking pattern variation. For low restriction design (long average domain length), weight (**(optimal_seed_len/average_domain_len)) is automatically applied to reduce wasteful calculation cost, resulting in no siginficant difference.
 - `-filter [number]`: 100 by default. Filter to prevent combinatorial explosion. The pattern exceeding threshold (above) will be pruned to this number. For low restriction design (long average domain length), weight (**(optimal_seed_len/average_domain_len)) is automatically applied to reduce wasteful calculation cost, resulting in no siginficant difference.
 - `-distance [number]`: 3 by default. Distance from 5-/3-end of staple and staple crossover (not considering scaffold crossover).
+- `-extension [number]`: 0 by default. Specified number of ssDNA (^) is added to the white staples. This is useful to introduce modifications to the DNA nanostructure.
 
 ### Staple Optimisation Workflow Semi-Autobreak
 
