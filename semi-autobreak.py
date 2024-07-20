@@ -20,9 +20,11 @@ def get_args():
     parser.add_argument('-connect', '-reconnect' '-c', dest='connect', action='store_true', help='Reconnect all break point of staples, by halting autobreak script')
     parser.add_argument('-color', '-colour' '-intermediate' '-i', dest='color', action='store_true', help='Leave intermediate JSON file displaying autobroken staples in green')
     parser.add_argument('-limit', '-threshold', '-t', dest='limit', type=int, default=5000, help='5000 by default. Limiter to prevent combinatorial explosion. The threshold to apply filter (below) breaking pattern variation. For low restriction designs (long average domain length), weight (**(optimal_seed_len/average_domain_len)) is automatically applied to reduce wasteful calculation cost, resulting in no siginficant differences')
-    parser.add_argument('-filter', '-f', dest='filter', type=int, default=100, help='100 by default. Filter to prevent combinatorial explosion. The pattern exceeding threshold (above) will be filtered to this number. For low restriction designs (long average domain length), weight (**(optimal_seed_len/average_domain_len)) is automatically applied to reduce wasteful calculation cost, resulting in no siginficant differences')
+    parser.add_argument('-filter', '-screen', '-f', dest='filter', type=int, default=100, help='100 by default. Filter to prevent combinatorial explosion. The pattern exceeding threshold (above) will be filtered to this number. For low restriction designs (long average domain length), weight (**(optimal_seed_len/average_domain_len)) is automatically applied to reduce wasteful calculation cost, resulting in no siginficant differences')
     parser.add_argument('-distance', '-d', dest='distance', type=int, default=3, help='3 for honeycomb lattice or 4 for square lattice by default, apart from the case path panel width is multiple of 672, regarding it as honeycomb lattice. Distance from 5-/3-end of staple and staple crossover (not considering scaffold crossover)')   
-    parser.add_argument('-penalty', '-p', dest='penalty', type=float, default=0.3, help='0.3 by default. Penalty for acceptable seed length vs optimal. The score of acceptable seed length is multiplied by this value.')
+    parser.add_argument('-penalty', '-rate', '-p', dest='penalty', type=float, default=0.3, help='0.3 by default. Penalty for acceptable seed length vs optimal. The score of acceptable seed length is multiplied by this value.')
+    parser.add_argument('-extension', '-ext', '-modification', '-mod', '-e', dest='extension', type=int, default=0, help='specified number will be added to the length of white strands during length evaluation, to be extended later manually.') 
+    #     parser.add_argument('-evaluate', '-score', '-e', dest='staple_start', type=str, help='Evaluate the score of specific staple. The format is helix_num[pos_num], e.g. 0[0]')
     return parser.parse_args()
 
 def load_json_file(filename: str) -> dict: 
@@ -36,6 +38,7 @@ def load_json_file(filename: str) -> dict:
 args = get_args()
 min_length = args.min
 max_length = args.max
+extension = '^' * args.extension
 if min_length > max_length:
     raise ValueError(f'max length {max_length} shuold be larger than min length {min_length}') 
 optimal_seed_len = args.optimal
@@ -69,13 +72,23 @@ if blueprint:
         num2id.update({blueprint['vstrands'][i]['num']: i})
         id2num.update({i: blueprint['vstrands'][i]['num']})
 
-def trace_domain(blueprint: dict, helix_num: int, pos_num: int, strand_id: int, report_path: str, max_length=args.max, min_length=args.min, optimal_seed_len=args.optimal, acceptable_seed_len=args.acceptable) -> tuple [dict, list]:
+# Define global counters
+acceptable_strand_count = 0
+optimal_strand_count = 0
+rest_strand_count = 0
+short_strand_count = 0
+long_strand_count = 0
+fixed_strand_count = 0
+
+def trace_domain(blueprint: dict, helix_num: int, pos_num: int, strand_id: int, report_path: str, max_length=args.max, min_length=args.min, optimal_seed_len=args.optimal, acceptable_seed_len=args.acceptable) -> tuple:
+    global acceptable_strand_count, optimal_strand_count, rest_strand_count, short_strand_count, long_strand_count, fixed_strand_count
+    
     # Change color of specific helices according to domain composition.
     tracer_pos = pos_num
     tracer_hel = helix_num
     last_tracer_pos = tracer_pos
     last_tracer_hel = tracer_hel
-    alphabet = [chr(i) for i in range(97,123)] * 50 # loops 50 times if alphabet is not enough 
+    alphabet = [chr(i) for i in range(97, 123)] * 50  # loops 50 times if alphabet is not enough
     alphabet.extend(['!'] * 5000)
     domain_num = 0
     count = 0
@@ -86,18 +99,18 @@ def trace_domain(blueprint: dict, helix_num: int, pos_num: int, strand_id: int, 
     domain_string = ''
 
     while staple_3_end != -1:
-        if blueprint['vstrands'][num2id[tracer_hel]]['scaf'][tracer_pos][0] == -1 and blueprint['vstrands'][num2id[tracer_hel]]['scaf'][tracer_pos][2] == -1: # Both end of scaffold is monitored. If scaffold is blank.
+        if blueprint['vstrands'][num2id[tracer_hel]]['scaf'][tracer_pos][0] == -1 and blueprint['vstrands'][num2id[tracer_hel]]['scaf'][tracer_pos][2] == -1:  # Both end of scaffold is monitored. If scaffold is blank.
             staple_3_end = blueprint['vstrands'][num2id[tracer_hel]]['stap'][tracer_pos][2]
             count = 0
-            domain_string += '^' # ssDNA region
+            domain_string += '^'  # ssDNA region
             last_tracer_hel = tracer_hel
             last_tracer_pos = tracer_pos
             tracer_hel = blueprint['vstrands'][num2id[last_tracer_hel]]['stap'][last_tracer_pos][2]
             tracer_pos = blueprint['vstrands'][num2id[last_tracer_hel]]['stap'][last_tracer_pos][3]
-        elif blueprint['vstrands'][num2id[tracer_hel]]['stap'][tracer_pos][2] == tracer_hel and blueprint['vstrands'][num2id[tracer_hel]]['scaf'][tracer_pos][0] == tracer_hel: # if domain continues
+        elif blueprint['vstrands'][num2id[tracer_hel]]['stap'][tracer_pos][2] == tracer_hel and blueprint['vstrands'][num2id[tracer_hel]]['scaf'][tracer_pos][0] == tracer_hel:  # if domain continues
             staple_3_end = blueprint['vstrands'][num2id[tracer_hel]]['stap'][tracer_pos][2]
             count += 1
-            max_count = max(count,max_count)
+            max_count = max(count, max_count)
             domain_string += alphabet[domain_num]
             last_tracer_pos = tracer_pos
             tracer_pos = blueprint['vstrands'][num2id[tracer_hel]]['stap'][tracer_pos][3]
@@ -106,7 +119,7 @@ def trace_domain(blueprint: dict, helix_num: int, pos_num: int, strand_id: int, 
             if count < 8 and count > 1:
                 hel_history.append(tracer_hel)
             if count >= acceptable_seed_len - 1:
-                domain_string = domain_string[:- 1 * ( count )] + alphabet[domain_num].upper() * ( count + 1 )
+                domain_string = domain_string[:- 1 * (count)] + alphabet[domain_num].upper() * (count + 1)
             else:
                 domain_string += alphabet[domain_num]
             count = 0
@@ -120,22 +133,44 @@ def trace_domain(blueprint: dict, helix_num: int, pos_num: int, strand_id: int, 
     end = str(last_tracer_hel) + '[' + str(last_tracer_pos) + '],'
     total_len = len(domain_string)
     core_len = len(domain_string.strip("^"))
-    if blueprint['vstrands'][num2id[helix_num]]['stap_colors'][strand_id][1] == 16777215: # White is left unprocessed.
-        pass
+    if blueprint['vstrands'][num2id[helix_num]]['stap_colors'][strand_id][1] == 16777215:  # White is left unprocessed.
+        domain_string = domain_string + extension
+        total_len = len(domain_string)
+        fixed_strand_count += 1
     elif core_len < min_length:
         blueprint['vstrands'][num2id[helix_num]]['stap_colors'][strand_id][1] = 16776960  # Yellow when the sequence is too short. Only for short limit, ssDNA region is excluded.
+        short_strand_count += 1
     elif total_len > max_length:
         blueprint['vstrands'][num2id[helix_num]]['stap_colors'][strand_id][1] = 16711935  # Magenta when the sequence is too long.
-    elif max_count >= optimal_seed_len - 1 :
-        blueprint['vstrands'][num2id[helix_num]]['stap_colors'][strand_id][1] = 255 # optimal strand is painted blue.
-        hel_history = []                                                    # short domains in optimal strand is not counted
-    elif max_count >= acceptable_seed_len - 1 :
-        blueprint['vstrands'][num2id[helix_num]]['stap_colors'][strand_id][1] = 65535 # Acceptable strand is painted cyan.
-        hel_history = []                                                      # short domains in acceptable strand is not counted
+        long_strand_count += 1
+    elif max_count >= optimal_seed_len - 1:
+        blueprint['vstrands'][num2id[helix_num]]['stap_colors'][strand_id][1] = 255  # optimal strand is painted blue.
+        hel_history = []  # short domains in optimal strand is not counted
+        optimal_strand_count += 1
+    elif max_count >= acceptable_seed_len - 1:
+        blueprint['vstrands'][num2id[helix_num]]['stap_colors'][strand_id][1] = 65535  # Acceptable strand is painted cyan.
+        hel_history = []  # short domains in acceptable strand is not counted
+        acceptable_strand_count += 1
     else:
-        blueprint['vstrands'][num2id[helix_num]]['stap_colors'][strand_id][1] = 16711680 # Rest bad strands are painted red
-    write_report(report_path, start + end + domain_string + ',' + str(total_len)) 
+        blueprint['vstrands'][num2id[helix_num]]['stap_colors'][strand_id][1] = 16711680  # Rest bad strands are painted red
+        rest_strand_count += 1
+    write_report(report_path, start + end + domain_string + ',' + str(total_len))
     return blueprint, hel_history
+
+def print_color_summary():
+    total_strands = (acceptable_strand_count + optimal_strand_count + rest_strand_count +
+                     short_strand_count + long_strand_count)
+    if total_strands > 0:
+        print(f"Total strands: {total_strands}")
+        print(f"Acceptable strands: {acceptable_strand_count}")
+        print(f"Optimal strands: {optimal_strand_count}")
+        print(f"Rest strands: {rest_strand_count}")
+        print(f"Short strands: {short_strand_count}")
+        print(f"Long strands: {long_strand_count}")
+        print(f"Fixed strands (excluded from total strand): {fixed_strand_count}")
+        print(f"Optimal strand percentage: {(optimal_strand_count / total_strands) * 100:.2f}%")
+        print(f"Optimal and Acceptable strand percentage: {((optimal_strand_count + acceptable_strand_count) / total_strands) * 100:.2f}%")
+
 
 def crossover_counter(blueprint: dict, report_path: str, short_domain_list: list):
     with open(report_path, 'w') as f:
@@ -177,9 +212,16 @@ def write_report(filename: str, content: str):
         f.write(content + '\n')
 
 def color_change(blueprint: dict, filename: str, output_file: str) -> list: 
+    global acceptable_strand_count, optimal_strand_count, rest_strand_count, short_strand_count, long_strand_count, fixed_strand_count
     short_domain_list = []
     with open(filename, 'w') as f:
         f.write('start,end,domains,length\n') # Initialize report file with empty content
+    optimal_strand_count = 0
+    acceptable_strand_count = 0
+    rest_strand_count = 0
+    short_strand_count = 0
+    long_strand_count = 0
+    fixed_strand_count = 0
     for helix_id, helix in enumerate(blueprint['vstrands']):
         for strand_id, strand in enumerate(helix['stap_colors']):
             position = strand[0]
@@ -306,8 +348,12 @@ def autobreak_search(input_seq: str, min_length=args.min, max_length=args.max, a
                     
             if not valid_split_found:
                 final_patterns.append(pattern)
-        weight_limit = int(limit_num ** (min(1, optimal_seed_len/average_domain_length))) # if the strand is continuous sequence, apply weight to limit to reduce wasteful calculation
-        weight_filter = int(filter_num ** (min(1, optimal_seed_len/average_domain_length))) # if the strand is continuous sequence, apply weight to limit to reduce wasteful calculation
+        if average_domain_length > 0:
+            weight_limit = int(limit_num ** (min(1, optimal_seed_len/average_domain_length))) # if the strand is continuous sequence, apply weight to limit to reduce wasteful calculation
+            weight_filter = int(filter_num ** (min(1, optimal_seed_len/average_domain_length))) # if the strand is continuous sequence, apply weight to limit to reduce wasteful calculation
+        else:
+            weight_limit = 1
+            weight_filter = 1
         if not new_patterns:  # No new patterns found in this iteration
             completed = True
         elif len(new_patterns) > weight_limit:  # for each cycle, if the pattern exceed limit, filtered to top 1000th score, with risk of listing local optimum.
@@ -352,12 +398,19 @@ def autobreak(blueprint: dict, report_path: str, color=False) -> dict:
         hel, pos = start.split('[')
         hel = int(hel)
         pos = int(pos[:-1])
+        skip_strand = False
         if split_length != []:
             for i in range(len(blueprint['vstrands'][num2id[hel]]['stap_colors'])):
                 if blueprint['vstrands'][num2id[hel]]['stap_colors'][i][0] == pos:
-                    blueprint['vstrands'][num2id[hel]]['stap_colors'][i][1] = 65280
+                    if blueprint['vstrands'][num2id[hel]]['stap_colors'][i][1] == 16777215: # if the strand is white, skip
+                        skip_strand = True
+                    else:
+                        blueprint['vstrands'][num2id[hel]]['stap_colors'][i][1] = 65280 # change colour to green, when this strand is edited
             for i in range(len(split_length)):
-                blueprint, hel, pos = break_3_end(blueprint, hel, pos, split_length[i])
+                if not skip_strand:
+                    blueprint, hel, pos = break_3_end(blueprint, hel, pos, split_length[i])
+                else:
+                    print("autobreak skipped")  # if the strand is white, skip. This resultes in wasteful calculation in line 396, but ignored for now.
     if color:   # if intermediate file kept or unsaved.
         write_json_file('output_autobreak.json', blueprint)
     return blueprint
@@ -433,7 +486,7 @@ def reconnect_breaks(blueprint: dict, hel_num: int, pos_num: int) -> dict:
                 for i in range(len(blueprint['vstrands'][num2id[last_tracer_hel]]['stap_colors'])):
                     if blueprint['vstrands'][num2id[last_tracer_hel]]['stap_colors'][i][0] == last_tracer_pos + direction and blueprint['vstrands'][num2id[last_tracer_hel]]['stap_colors'][i][1] == 16777215: # White strand is left intact, for manual editing.
                         end_flag = True
-                        print("Strand: " + str(start_hel) + "[" + str(start_pos) + "] was left broken as specified")
+                        print("Strand: " + str(last_tracer_hel) + "[" + str(last_tracer_pos) + "] was left broken as specified")
                     elif blueprint['vstrands'][num2id[last_tracer_hel]]['stap_colors'][i][0] == last_tracer_pos + direction:
                         blueprint['vstrands'][num2id[last_tracer_hel]]['stap'][last_tracer_pos][2] = last_tracer_hel
                         blueprint['vstrands'][num2id[last_tracer_hel]]['stap'][last_tracer_pos][3] = last_tracer_pos + direction
@@ -481,3 +534,4 @@ if blueprint:
 
 # Print options for reference
 print(f"Options: min_length: {min_length}, max_length: {max_length}, optimal_seed_len: {optimal_seed_len}, acceptable_seed_len: {acceptable_seed_len}, distance: {distance}, penalty_rate: {args.penalty}, filter: {args.filter}, limit: {args.limit}")
+print_color_summary()
