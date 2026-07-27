@@ -1,4 +1,12 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.8"
+# dependencies = []
+# ///
+# The block above is PEP 723 inline metadata. It lets `uv run --script setup.py`
+# supply an interpreter itself, so install.sh and install.bat can bootstrap the
+# whole installation without a system Python. python3 setup.py still works: to
+# Python the block is an ordinary comment.
 """Install cadnano2 into an isolated environment managed by uv.
 
 This replaces the previous virtualenv + pip installer. uv ships its own TLS

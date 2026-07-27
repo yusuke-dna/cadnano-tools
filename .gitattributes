@@ -1,0 +1,8 @@
+# cmd.exe parses a batch file line by line as it executes it, and misreads
+# labels and multi-line blocks in a file that arrives with bare LF endings.
+# Forced here so install.bat is checked out with CRLF no matter which platform
+# the clone happens on.
+*.bat text eol=crlf
+
+# The counterpart: /bin/sh will not run a script whose shebang line ends in CR.
+*.sh text eol=lf
