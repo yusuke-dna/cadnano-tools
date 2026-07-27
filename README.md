@@ -14,12 +14,14 @@ This repository contains several microtools designed to enhance the functionalit
     This command will:
     - Install uv if it is not already present, after asking for confirmation.
     - Download a uv-managed Python 3.12 and install `cadnano2` and PyQt6 into an isolated environment.
-    - Add uv's executable directory to your PATH if it is not already there, choosing the correct configuration file for your login shell.
+    - Add uv's executable directory to your PATH if it is not already there. On macOS and Linux this means the configuration file matching your login shell; on Windows it means your persistent user PATH, which the script asks uv to update.
     - On Windows, create a `cadnano2` shortcut on your desktop.
 
     Re-running the script is safe: it repairs an existing installation rather than rebuilding it.
 
-2. **Using the Tools**: Once the setup is complete, open a new terminal and start cadnano2 by typing `cadnano2`. Windows users can also double-click the `cadnano2` shortcut on the desktop.
+2. **Using the Tools**: Once the setup is complete, **open a new terminal** and start cadnano2 by typing `cadnano2`. Windows users can also double-click the `cadnano2` shortcut on the desktop.
+
+    A new terminal is required, not optional. PATH is read once when a shell starts, so a Command Prompt or terminal that was already open when you ran the installer will still report that `cadnano2` is not recognised. Run `python3 setup.py --check` if you are unsure whether PATH was configured.
 
     If you installed cadnano2 with an older version of this script, it added an alias to your shell configuration file. **An alias takes precedence over the newly installed command**, so delete any `alias cadnano2=...` lines before opening a new terminal. The script reports the exact files and line numbers; it does not edit them for you. The old environment at `~/venv/cn2` can be deleted once the new one works.
 

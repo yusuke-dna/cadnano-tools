@@ -438,6 +438,78 @@ def already_on_path(bin_dir):
     return False
 
 
+def windows_user_path():
+    """Read the persistent per-user PATH from the registry. Read-only."""
+    try:
+        import winreg
+
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment") as key:
+            value, _ = winreg.QueryValueEx(key, "Path")
+        return os.path.expandvars(value)
+    except (ImportError, FileNotFoundError, OSError):
+        return None
+
+
+def windows_path_contains(path_value, bin_dir):
+    """Compare against a Windows PATH string.
+
+    Windows semantics are spelled out rather than taken from os.path, so this
+    stays correct (and testable) when the string is inspected from another
+    platform: ';' separated, case-insensitive, '/' and '\\' interchangeable.
+    """
+    if not path_value:
+        return False
+
+    def normalise(text):
+        return str(text).strip().strip('"').replace("/", "\\").rstrip("\\").lower()
+
+    target = normalise(bin_dir)
+    if not target:
+        return False
+    return any(
+        normalise(entry) == target for entry in path_value.split(";") if entry.strip()
+    )
+
+
+def configure_windows_path(uv, bin_dir, assume_yes):
+    """Put bin_dir on the persistent user PATH so cmd.exe can find cadnano2.
+
+    On Windows the equivalent of a shell rc file is HKCU\\Environment, which uv
+    itself knows how to update. Delegating keeps us out of the registry.
+    """
+    if windows_path_contains(windows_user_path(), bin_dir):
+        info("")
+        info(f"{bin_dir} is already on your user PATH.")
+        info("Open a NEW Command Prompt -- already-open windows keep the old PATH.")
+        return
+
+    info("")
+    info(f"{bin_dir} is not on your PATH, so `{COMMAND}` will not run from cmd.exe.")
+    info("`uv tool update-shell` can add it to your user PATH.")
+    if not confirm("Run it now?", assume_yes):
+        manual_windows_path_instructions(bin_dir)
+        return
+
+    proc = run([uv, "tool", "update-shell"], check=False, capture=True)
+    if proc.returncode != 0:
+        warn("uv could not update your PATH")
+        manual_windows_path_instructions(bin_dir)
+        return
+
+    info("")
+    info("User PATH updated. Open a NEW Command Prompt for it to take effect;")
+    info("existing windows keep the PATH they started with.")
+
+
+def manual_windows_path_instructions(bin_dir):
+    info("")
+    info("To add it by hand, run this in Command Prompt and open a new window:")
+    info(f'    setx PATH "%PATH%;{bin_dir}"')
+    info("")
+    info(f"Until then, start cadnano2 with its full path:  {bin_dir / COMMAND}")
+    info("The desktop shortcut works regardless of PATH.")
+
+
 def configure_path(bin_dir, assume_yes):
     """Add bin_dir to PATH in the login shell's config file, idempotently."""
     shell = detect_login_shell()
@@ -726,6 +798,11 @@ def do_check():
         bin_dir = tool_bin_dir(uv)
         on_path = "yes" if already_on_path(bin_dir) else "NO"
         info(f"tool bin dir:  {bin_dir}   [on PATH: {on_path}]")
+        if os.name == "nt":
+            persisted = windows_path_contains(windows_user_path(), bin_dir)
+            info(f"user PATH:     {'registered' if persisted else 'NOT registered'}")
+            if persisted and on_path == "NO":
+                info("               (open a new Command Prompt to pick it up)")
         listing = subprocess.run([uv, "tool", "list"], text=True, capture_output=True)
         installed = [
             line for line in (listing.stdout or "").splitlines() if line.startswith(PACKAGE)
@@ -781,6 +858,8 @@ def main():
     info(f"{PACKAGE} installed. Executable directory: {bin_dir}")
 
     if os.name == "nt":
+        if not already_on_path(bin_dir):
+            configure_windows_path(uv, bin_dir, args.yes)
         if not args.no_shortcut:
             create_windows_shortcut(bin_dir)
     elif not already_on_path(bin_dir):
@@ -790,10 +869,11 @@ def main():
     report_legacy_venv()
 
     info("")
-    info("Done. Start cadnano2 by running:")
+    info("Done. Open a new terminal, then start cadnano2 by running:")
     info(f"    {COMMAND}")
     if os.name == "nt":
-        info("or by double-clicking the cadnano2 shortcut on your desktop.")
+        info("A new Command Prompt is required: open windows keep the old PATH.")
+        info("You can also double-click the cadnano2 shortcut on your desktop.")
 
 
 if __name__ == "__main__":
