@@ -124,15 +124,38 @@ def confirm(question, assume_yes):
 
 
 def uv_candidates():
-    """Default install locations, for the case where uv is not yet on PATH."""
+    """Places uv may sit when it is installed but not yet on PATH.
+
+    The environment variables come first because the official installer obeys
+    them: a bootstrap driven by UV_INSTALL_DIR or XDG_BIN_HOME lands outside
+    ~/.local/bin, and looking only in the default would report the freshly
+    installed uv as missing.
+    """
     home = Path.home()
     name = "uv.exe" if os.name == "nt" else "uv"
-    candidates = [home / ".local" / "bin" / name]
+    dirs = []
+
+    for variable in ("UV_INSTALL_DIR", "XDG_BIN_HOME"):
+        value = os.environ.get(variable)
+        if value:
+            dirs.append(Path(value))
+    data_home = os.environ.get("XDG_DATA_HOME")
+    if data_home:
+        dirs.append(Path(data_home).parent / "bin")
+    cargo_home = os.environ.get("CARGO_HOME")
+    if cargo_home:
+        dirs.append(Path(cargo_home) / "bin")
+
+    dirs.extend([home / ".local" / "bin", home / ".cargo" / "bin"])
     if os.name == "nt":
-        candidates.append(home / ".cargo" / "bin" / name)
+        local_app_data = os.environ.get("LOCALAPPDATA")
+        if local_app_data:
+            dirs.append(Path(local_app_data) / "Microsoft" / "WinGet" / "Links")
+        dirs.append(home / "scoop" / "shims")
     else:
-        candidates.extend([home / ".cargo" / "bin" / name, Path("/opt/homebrew/bin") / name])
-    return candidates
+        dirs.extend([Path("/opt/homebrew/bin"), Path("/usr/local/bin")])
+
+    return [directory / name for directory in dirs]
 
 
 def find_uv():
@@ -145,20 +168,31 @@ def find_uv():
     return None
 
 
-def bootstrap_uv(assume_yes):
-    """Install uv using the official installer, with explicit consent."""
+def bootstrap_uv():
+    """Install uv using the official installer.
+
+    This runs without asking. uv is not an optional extra here -- it is the
+    package manager this script installs cadnano2 with -- so a prompt would
+    only offer a choice between installing it and doing nothing. The steps are
+    announced instead, so the user can see what was fetched and from where.
+    """
     url = INSTALLER_URL_WINDOWS if os.name == "nt" else INSTALLER_URL_UNIX
     info("")
-    info("uv was not found on this system.")
-    info(f"The official installer at {url} would be downloaded and executed.")
-    info("It installs uv into ~/.local/bin and does not require administrator rights.")
+    info("=" * 72)
+    info("uv was not found on this system, so it will be installed now.")
     info("")
-    if not confirm("Download and run the uv installer?", assume_yes):
-        fail(
-            "uv is required. Install it yourself and re-run this script:\n"
-            f"  macOS/Linux: curl -LsSf {INSTALLER_URL_UNIX} | sh\n"
-            f'  Windows:     powershell -ExecutionPolicy ByPass -c "irm {INSTALLER_URL_WINDOWS} | iex"'
-        )
+    info("  what      uv, the package manager used to install cadnano2")
+    info(f"  source    {url}  (official installer, Astral)")
+    info("  where     ~/.local/bin")
+    info("  rights    no administrator privileges required")
+    info("")
+    info("The installer also adds ~/.local/bin to your shell configuration.")
+    info("To skip this step, install uv yourself and re-run:")
+    if os.name == "nt":
+        info(f'    powershell -ExecutionPolicy ByPass -c "irm {url} | iex"')
+    else:
+        info(f"    curl -LsSf {url} | sh")
+    info("=" * 72)
 
     # Download to a file first rather than piping straight into a shell, so a
     # truncated download cannot be executed halfway.
@@ -194,7 +228,13 @@ def bootstrap_uv(assume_yes):
 
     uv = find_uv()
     if not uv:
-        fail("uv was installed but could not be located; open a new terminal and re-run")
+        searched = "\n".join(f"    {candidate}" for candidate in uv_candidates())
+        fail(
+            "the uv installer reported success, but uv could not be found.\n"
+            "Looked in:\n" + searched + "\n"
+            "Set UV_INSTALL_DIR to the directory it was installed into, or open\n"
+            "a new terminal (which will pick up the updated PATH) and re-run."
+        )
     info(f"uv installed at {uv}")
     return uv
 
@@ -209,7 +249,45 @@ def looks_like_tls_failure(proc):
     return any(hint in haystack for hint in TLS_ERROR_HINTS)
 
 
-def uv_env(system_certs=False):
+_UV_VERSION_CACHE = {}
+
+# uv 0.11 renamed UV_NATIVE_TLS to UV_SYSTEM_CERTS.
+SYSTEM_CERTS_RENAMED_IN = (0, 11, 0)
+
+
+def uv_version(uv):
+    """(major, minor, patch) for this uv, or None if it cannot be read."""
+    key = str(uv)
+    if key not in _UV_VERSION_CACHE:
+        parsed = None
+        try:
+            proc = subprocess.run(
+                [key, "--version"], text=True, capture_output=True, timeout=30
+            )
+            if proc.returncode == 0:
+                match = re.search(r"(\d+)\.(\d+)\.(\d+)", proc.stdout or "")
+                if match:
+                    parsed = tuple(int(part) for part in match.groups())
+        except (OSError, subprocess.SubprocessError):
+            parsed = None
+        _UV_VERSION_CACHE[key] = parsed
+    return _UV_VERSION_CACHE[key]
+
+
+def system_certs_variable(uv):
+    """The environment variable this uv understands for the system trust store.
+
+    Picked by version rather than setting both names: uv ignores the name it
+    does not know without complaining, so the wrong one fails silently, while
+    setting both makes current uv warn about the deprecated one on every call.
+    """
+    version = uv_version(uv)
+    if version is not None and version < SYSTEM_CERTS_RENAMED_IN:
+        return "UV_NATIVE_TLS"
+    return "UV_SYSTEM_CERTS"
+
+
+def uv_env(uv, system_certs=False):
     """Environment for uv subprocesses.
 
     python-preference is deliberately not set here: uv rejects it alongside the
@@ -220,9 +298,7 @@ def uv_env(system_certs=False):
     env = dict(os.environ)
     env["UV_PYTHON_DOWNLOADS"] = "automatic"
     if system_certs:
-        # Renamed from UV_NATIVE_TLS in uv 0.11. Older uv ignores unknown
-        # variables, so setting only the current name degrades quietly.
-        env["UV_SYSTEM_CERTS"] = "true"
+        env[system_certs_variable(uv)] = "true"
     return env
 
 
@@ -233,7 +309,7 @@ def ensure_python(uv, python_version, system_certs):
         [uv, "python", "install", "--managed-python", python_version],
         check=False,
         capture=True,
-        env=uv_env(system_certs),
+        env=uv_env(uv, system_certs),
     )
 
 
@@ -263,7 +339,7 @@ def install_cadnano2(uv, python_version, system_certs, insecure, reinstall, upgr
             warn("certificate verification failed; a TLS-inspecting proxy is likely.")
             info(f"Retrying {note}...")
 
-        env = uv_env(certs)
+        env = uv_env(uv, certs)
 
         if not upgrade:
             python_proc = ensure_python(uv, python_version, certs)
@@ -436,6 +512,66 @@ def already_on_path(bin_dir):
         except OSError:
             continue
     return False
+
+
+def windows_user_path():
+    """Read the persistent per-user PATH from the registry. Read-only."""
+    try:
+        import winreg
+
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment") as key:
+            value, _ = winreg.QueryValueEx(key, "Path")
+        return os.path.expandvars(value)
+    except (ImportError, FileNotFoundError, OSError):
+        return None
+
+
+def windows_path_contains(path_value, bin_dir):
+    """Compare against a Windows PATH string.
+
+    Windows semantics are spelled out rather than taken from os.path, so this
+    stays correct (and testable) when the string is inspected from another
+    platform: ';' separated, case-insensitive, '/' and '\\' interchangeable.
+    """
+    if not path_value:
+        return False
+
+    def normalise(text):
+        return str(text).strip().strip('"').replace("/", "\\").rstrip("\\").lower()
+
+    target = normalise(bin_dir)
+    if not target:
+        return False
+    return any(
+        normalise(entry) == target for entry in path_value.split(";") if entry.strip()
+    )
+
+
+def report_windows_path(bin_dir):
+    """Explain whether cmd.exe will find cadnano2. Changes nothing.
+
+    Windows keeps PATH in HKCU\\Environment rather than in a file the user
+    edits, so a change there reaches every process the account starts. That is
+    the user's call to make, not the installer's; this only reports the state
+    and shows the commands.
+    """
+    if windows_path_contains(windows_user_path(), bin_dir):
+        info("")
+        info(f"{bin_dir} is on your user PATH.")
+        info("Open a NEW Command Prompt to use `cadnano2` -- a window that was")
+        info("already open keeps the PATH it started with.")
+        return
+
+    info("")
+    info(f"{bin_dir} is not on your PATH, so `{COMMAND}` will not run from")
+    info("cmd.exe or PowerShell. The desktop shortcut works either way.")
+    info("")
+    info("To enable the command line, run one of these yourself and then open")
+    info("a new Command Prompt:")
+    info("    uv tool update-shell")
+    info(f'    setx PATH "%PATH%;{bin_dir}"')
+    info("")
+    info(f"Or start cadnano2 by full path:  {bin_dir / COMMAND}")
 
 
 def configure_path(bin_dir, assume_yes):
@@ -699,7 +835,7 @@ def parse_args():
         "--yes",
         "-y",
         action="store_true",
-        help="answer yes to prompts (installing uv, editing shell configuration)",
+        help="answer yes to prompts (currently only editing shell configuration)",
     )
     parser.add_argument(
         "--uninstall",
@@ -723,9 +859,15 @@ def do_check():
         version = subprocess.run([uv, "--version"], text=True, capture_output=True)
         if version.returncode == 0:
             info(f"uv version:    {version.stdout.strip()}")
+        info(f"system certs:  --system-certs uses {system_certs_variable(uv)}")
         bin_dir = tool_bin_dir(uv)
         on_path = "yes" if already_on_path(bin_dir) else "NO"
         info(f"tool bin dir:  {bin_dir}   [on PATH: {on_path}]")
+        if os.name == "nt":
+            persisted = windows_path_contains(windows_user_path(), bin_dir)
+            info(f"user PATH:     {'registered' if persisted else 'NOT registered'}")
+            if persisted and on_path == "NO":
+                info("               (open a new Command Prompt to pick it up)")
         listing = subprocess.run([uv, "tool", "list"], text=True, capture_output=True)
         installed = [
             line for line in (listing.stdout or "").splitlines() if line.startswith(PACKAGE)
@@ -769,7 +911,7 @@ def main():
         uninstall(find_uv())
         return
 
-    uv = find_uv() or bootstrap_uv(args.yes)
+    uv = find_uv() or bootstrap_uv()
     info(f"Using uv at {uv}")
 
     install_cadnano2(
@@ -781,6 +923,8 @@ def main():
     info(f"{PACKAGE} installed. Executable directory: {bin_dir}")
 
     if os.name == "nt":
+        if not already_on_path(bin_dir):
+            report_windows_path(bin_dir)
         if not args.no_shortcut:
             create_windows_shortcut(bin_dir)
     elif not already_on_path(bin_dir):
@@ -790,10 +934,11 @@ def main():
     report_legacy_venv()
 
     info("")
-    info("Done. Start cadnano2 by running:")
+    info("Done. Open a new terminal, then start cadnano2 by running:")
     info(f"    {COMMAND}")
     if os.name == "nt":
-        info("or by double-clicking the cadnano2 shortcut on your desktop.")
+        info("A new Command Prompt is required: open windows keep the old PATH.")
+        info("You can also double-click the cadnano2 shortcut on your desktop.")
 
 
 if __name__ == "__main__":
