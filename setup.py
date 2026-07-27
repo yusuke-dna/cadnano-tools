@@ -249,7 +249,45 @@ def looks_like_tls_failure(proc):
     return any(hint in haystack for hint in TLS_ERROR_HINTS)
 
 
-def uv_env(system_certs=False):
+_UV_VERSION_CACHE = {}
+
+# uv 0.11 renamed UV_NATIVE_TLS to UV_SYSTEM_CERTS.
+SYSTEM_CERTS_RENAMED_IN = (0, 11, 0)
+
+
+def uv_version(uv):
+    """(major, minor, patch) for this uv, or None if it cannot be read."""
+    key = str(uv)
+    if key not in _UV_VERSION_CACHE:
+        parsed = None
+        try:
+            proc = subprocess.run(
+                [key, "--version"], text=True, capture_output=True, timeout=30
+            )
+            if proc.returncode == 0:
+                match = re.search(r"(\d+)\.(\d+)\.(\d+)", proc.stdout or "")
+                if match:
+                    parsed = tuple(int(part) for part in match.groups())
+        except (OSError, subprocess.SubprocessError):
+            parsed = None
+        _UV_VERSION_CACHE[key] = parsed
+    return _UV_VERSION_CACHE[key]
+
+
+def system_certs_variable(uv):
+    """The environment variable this uv understands for the system trust store.
+
+    Picked by version rather than setting both names: uv ignores the name it
+    does not know without complaining, so the wrong one fails silently, while
+    setting both makes current uv warn about the deprecated one on every call.
+    """
+    version = uv_version(uv)
+    if version is not None and version < SYSTEM_CERTS_RENAMED_IN:
+        return "UV_NATIVE_TLS"
+    return "UV_SYSTEM_CERTS"
+
+
+def uv_env(uv, system_certs=False):
     """Environment for uv subprocesses.
 
     python-preference is deliberately not set here: uv rejects it alongside the
@@ -260,9 +298,7 @@ def uv_env(system_certs=False):
     env = dict(os.environ)
     env["UV_PYTHON_DOWNLOADS"] = "automatic"
     if system_certs:
-        # Renamed from UV_NATIVE_TLS in uv 0.11. Older uv ignores unknown
-        # variables, so setting only the current name degrades quietly.
-        env["UV_SYSTEM_CERTS"] = "true"
+        env[system_certs_variable(uv)] = "true"
     return env
 
 
@@ -273,7 +309,7 @@ def ensure_python(uv, python_version, system_certs):
         [uv, "python", "install", "--managed-python", python_version],
         check=False,
         capture=True,
-        env=uv_env(system_certs),
+        env=uv_env(uv, system_certs),
     )
 
 
@@ -303,7 +339,7 @@ def install_cadnano2(uv, python_version, system_certs, insecure, reinstall, upgr
             warn("certificate verification failed; a TLS-inspecting proxy is likely.")
             info(f"Retrying {note}...")
 
-        env = uv_env(certs)
+        env = uv_env(uv, certs)
 
         if not upgrade:
             python_proc = ensure_python(uv, python_version, certs)
@@ -823,6 +859,7 @@ def do_check():
         version = subprocess.run([uv, "--version"], text=True, capture_output=True)
         if version.returncode == 0:
             info(f"uv version:    {version.stdout.strip()}")
+        info(f"system certs:  --system-certs uses {system_certs_variable(uv)}")
         bin_dir = tool_bin_dir(uv)
         on_path = "yes" if already_on_path(bin_dir) else "NO"
         info(f"tool bin dir:  {bin_dir}   [on PATH: {on_path}]")
