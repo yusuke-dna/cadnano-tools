@@ -124,15 +124,38 @@ def confirm(question, assume_yes):
 
 
 def uv_candidates():
-    """Default install locations, for the case where uv is not yet on PATH."""
+    """Places uv may sit when it is installed but not yet on PATH.
+
+    The environment variables come first because the official installer obeys
+    them: a bootstrap driven by UV_INSTALL_DIR or XDG_BIN_HOME lands outside
+    ~/.local/bin, and looking only in the default would report the freshly
+    installed uv as missing.
+    """
     home = Path.home()
     name = "uv.exe" if os.name == "nt" else "uv"
-    candidates = [home / ".local" / "bin" / name]
+    dirs = []
+
+    for variable in ("UV_INSTALL_DIR", "XDG_BIN_HOME"):
+        value = os.environ.get(variable)
+        if value:
+            dirs.append(Path(value))
+    data_home = os.environ.get("XDG_DATA_HOME")
+    if data_home:
+        dirs.append(Path(data_home).parent / "bin")
+    cargo_home = os.environ.get("CARGO_HOME")
+    if cargo_home:
+        dirs.append(Path(cargo_home) / "bin")
+
+    dirs.extend([home / ".local" / "bin", home / ".cargo" / "bin"])
     if os.name == "nt":
-        candidates.append(home / ".cargo" / "bin" / name)
+        local_app_data = os.environ.get("LOCALAPPDATA")
+        if local_app_data:
+            dirs.append(Path(local_app_data) / "Microsoft" / "WinGet" / "Links")
+        dirs.append(home / "scoop" / "shims")
     else:
-        candidates.extend([home / ".cargo" / "bin" / name, Path("/opt/homebrew/bin") / name])
-    return candidates
+        dirs.extend([Path("/opt/homebrew/bin"), Path("/usr/local/bin")])
+
+    return [directory / name for directory in dirs]
 
 
 def find_uv():
@@ -145,20 +168,31 @@ def find_uv():
     return None
 
 
-def bootstrap_uv(assume_yes):
-    """Install uv using the official installer, with explicit consent."""
+def bootstrap_uv():
+    """Install uv using the official installer.
+
+    This runs without asking. uv is not an optional extra here -- it is the
+    package manager this script installs cadnano2 with -- so a prompt would
+    only offer a choice between installing it and doing nothing. The steps are
+    announced instead, so the user can see what was fetched and from where.
+    """
     url = INSTALLER_URL_WINDOWS if os.name == "nt" else INSTALLER_URL_UNIX
     info("")
-    info("uv was not found on this system.")
-    info(f"The official installer at {url} would be downloaded and executed.")
-    info("It installs uv into ~/.local/bin and does not require administrator rights.")
+    info("=" * 72)
+    info("uv was not found on this system, so it will be installed now.")
     info("")
-    if not confirm("Download and run the uv installer?", assume_yes):
-        fail(
-            "uv is required. Install it yourself and re-run this script:\n"
-            f"  macOS/Linux: curl -LsSf {INSTALLER_URL_UNIX} | sh\n"
-            f'  Windows:     powershell -ExecutionPolicy ByPass -c "irm {INSTALLER_URL_WINDOWS} | iex"'
-        )
+    info("  what      uv, the package manager used to install cadnano2")
+    info(f"  source    {url}  (official installer, Astral)")
+    info("  where     ~/.local/bin")
+    info("  rights    no administrator privileges required")
+    info("")
+    info("The installer also adds ~/.local/bin to your shell configuration.")
+    info("To skip this step, install uv yourself and re-run:")
+    if os.name == "nt":
+        info(f'    powershell -ExecutionPolicy ByPass -c "irm {url} | iex"')
+    else:
+        info(f"    curl -LsSf {url} | sh")
+    info("=" * 72)
 
     # Download to a file first rather than piping straight into a shell, so a
     # truncated download cannot be executed halfway.
@@ -194,7 +228,13 @@ def bootstrap_uv(assume_yes):
 
     uv = find_uv()
     if not uv:
-        fail("uv was installed but could not be located; open a new terminal and re-run")
+        searched = "\n".join(f"    {candidate}" for candidate in uv_candidates())
+        fail(
+            "the uv installer reported success, but uv could not be found.\n"
+            "Looked in:\n" + searched + "\n"
+            "Set UV_INSTALL_DIR to the directory it was installed into, or open\n"
+            "a new terminal (which will pick up the updated PATH) and re-run."
+        )
     info(f"uv installed at {uv}")
     return uv
 
@@ -759,7 +799,7 @@ def parse_args():
         "--yes",
         "-y",
         action="store_true",
-        help="answer yes to prompts (installing uv, editing shell configuration)",
+        help="answer yes to prompts (currently only editing shell configuration)",
     )
     parser.add_argument(
         "--uninstall",
@@ -834,7 +874,7 @@ def main():
         uninstall(find_uv())
         return
 
-    uv = find_uv() or bootstrap_uv(args.yes)
+    uv = find_uv() or bootstrap_uv()
     info(f"Using uv at {uv}")
 
     install_cadnano2(

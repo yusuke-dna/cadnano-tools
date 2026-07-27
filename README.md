@@ -12,7 +12,7 @@ This repository contains several microtools designed to enhance the functionalit
     $ python3 setup.py
     ```
     This command will:
-    - Install uv if it is not already present, after asking for confirmation.
+    - Install uv automatically if it is not already present, reporting what it downloads and from where. uv is what the installer uses to build cadnano2's environment, so this step is not optional; install uv yourself beforehand if you would rather control it.
     - Download a uv-managed Python 3.12 and install `cadnano2` and PyQt6 into an isolated environment.
     - On macOS and Linux, add uv's executable directory to your PATH if it is not already there, using the configuration file that matches your login shell.
     - On Windows, create a `cadnano2` shortcut on your desktop.
