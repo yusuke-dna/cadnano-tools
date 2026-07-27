@@ -2,7 +2,7 @@
 This repository contains several microtools designed to enhance the functionality of cadnano, a popular software for designing DNA nanostructures.
 
 ## Setup Script
-`setup.py` is a script to automate the setup of a virtual environment and installation of necessary packages. This script ensures that all dependencies, including `cadnano2` and `pywin32` (for Windows), are installed in an isolated environment.
+`setup.py` installs `cadnano2` into an isolated environment managed by [uv](https://docs.astral.sh/uv/). uv supplies its own Python interpreter, so the installation does not depend on which `python3` happens to be first on your PATH — pyenv, conda and Homebrew installations no longer interfere with it.
 
 ### How to Use
 
@@ -11,21 +11,37 @@ This repository contains several microtools designed to enhance the functionalit
     ```bash
     $ python3 setup.py
     ```
-    In case the Python version does not support SSL, you can add an argument to tunnel the SSL connection.
-    ```bash
-    $ python3 setup.py -unsafe
-    ```
     This command will:
-    - Create a virtual environment in `~/venv/cn2` (or `venv\cn2` under the user's home directory on Windows).
-    - Upgrade `pip` and `setuptools` within the virtual environment.
-    - Install `cadnano2` and other dependencies within the virtual environment.
-    - For Windows users, it will also install `pywin32` and create a desktop shortcut to run `cadnano2` under the virtual environment.
+    - Install uv if it is not already present, after asking for confirmation.
+    - Download a uv-managed Python 3.12 and install `cadnano2` and PyQt6 into an isolated environment.
+    - Add uv's executable directory to your PATH if it is not already there, choosing the correct configuration file for your login shell.
+    - On Windows, create a `cadnano2` shortcut on your desktop.
 
-2. **Using the Tools**: Once the setup is complete, you can use the various tools provided in this repository. For Mac/Linux users, you can start `cadnano2` by using the automatically added alias `cadnano2` in your rebooted terminal. For Windows users, you can start `cadnano2` by clicking the `cadnano2` shortcut created on your desktop.
+    Re-running the script is safe: it repairs an existing installation rather than rebuilding it.
+
+2. **Using the Tools**: Once the setup is complete, open a new terminal and start cadnano2 by typing `cadnano2`. Windows users can also double-click the `cadnano2` shortcut on the desktop.
+
+    If you installed cadnano2 with an older version of this script, it added an alias to your shell configuration file. **An alias takes precedence over the newly installed command**, so delete any `alias cadnano2=...` lines before opening a new terminal. The script reports the exact files and line numbers; it does not edit them for you. The old environment at `~/venv/cn2` can be deleted once the new one works.
+
+### Options
+
+| Option | Purpose |
+|---|---|
+| `--check` | Report what is installed and what needs attention, changing nothing. |
+| `--upgrade` | Upgrade an existing installation to the latest `cadnano2`. |
+| `--reinstall` | Rebuild the environment from scratch if it is broken. |
+| `--python VERSION` | Use a different Python version (default 3.12). |
+| `--system-certs` | Use the operating system's certificate store. Try this first if your institution intercepts TLS traffic. |
+| `--allow-insecure-host` | Last resort if `--system-certs` is not enough. Skips certificate verification for pypi.org only. |
+| `--uninstall` | Remove cadnano2 and report anything left to clean up by hand. |
+| `--yes` | Answer yes to prompts, for unattended installation. |
+
+The old `-unsafe` flag is deprecated. It disabled certificate verification to work around Python builds without working SSL; uv bundles its own TLS stack, so that problem no longer arises. If you are behind a TLS-inspecting proxy, use `--system-certs`.
 
 ### Requirements
 
-- Python 3.9.13 or later for Windows, Python 3.8.10 or later for Mac.
+- Python 3.8 or later, only to run the installer itself. uv provides the Python that cadnano2 actually runs on, so no particular version needs to be installed beforehand.
+- Note for Windows users: python.org stopped shipping binary installers for Python 3.12 after 3.12.10, but uv installs 3.12.13 on Windows just as it does on macOS and Linux.
 
 ## Semi-Autobreak
 A Python script that supports users' semi-automatic optimisation of the breaking points of staples in DNA origami design. It removes existing staple breaks and introduces breaks with the following criteria if possible. If not possible, or if the user colour the staple in white (#FFFFFF), the strand is left intact. Users will attempt to rearrange the crossover position referring to the generated reports and repeatedly run the script to turn all strands blue (or cyan). Merged with `Seeding Domain Tracer` on 19th Sept 2023.
