@@ -471,43 +471,31 @@ def windows_path_contains(path_value, bin_dir):
     )
 
 
-def configure_windows_path(uv, bin_dir, assume_yes):
-    """Put bin_dir on the persistent user PATH so cmd.exe can find cadnano2.
+def report_windows_path(bin_dir):
+    """Explain whether cmd.exe will find cadnano2. Changes nothing.
 
-    On Windows the equivalent of a shell rc file is HKCU\\Environment, which uv
-    itself knows how to update. Delegating keeps us out of the registry.
+    Windows keeps PATH in HKCU\\Environment rather than in a file the user
+    edits, so a change there reaches every process the account starts. That is
+    the user's call to make, not the installer's; this only reports the state
+    and shows the commands.
     """
     if windows_path_contains(windows_user_path(), bin_dir):
         info("")
-        info(f"{bin_dir} is already on your user PATH.")
-        info("Open a NEW Command Prompt -- already-open windows keep the old PATH.")
+        info(f"{bin_dir} is on your user PATH.")
+        info("Open a NEW Command Prompt to use `cadnano2` -- a window that was")
+        info("already open keeps the PATH it started with.")
         return
 
     info("")
-    info(f"{bin_dir} is not on your PATH, so `{COMMAND}` will not run from cmd.exe.")
-    info("`uv tool update-shell` can add it to your user PATH.")
-    if not confirm("Run it now?", assume_yes):
-        manual_windows_path_instructions(bin_dir)
-        return
-
-    proc = run([uv, "tool", "update-shell"], check=False, capture=True)
-    if proc.returncode != 0:
-        warn("uv could not update your PATH")
-        manual_windows_path_instructions(bin_dir)
-        return
-
+    info(f"{bin_dir} is not on your PATH, so `{COMMAND}` will not run from")
+    info("cmd.exe or PowerShell. The desktop shortcut works either way.")
     info("")
-    info("User PATH updated. Open a NEW Command Prompt for it to take effect;")
-    info("existing windows keep the PATH they started with.")
-
-
-def manual_windows_path_instructions(bin_dir):
-    info("")
-    info("To add it by hand, run this in Command Prompt and open a new window:")
+    info("To enable the command line, run one of these yourself and then open")
+    info("a new Command Prompt:")
+    info("    uv tool update-shell")
     info(f'    setx PATH "%PATH%;{bin_dir}"')
     info("")
-    info(f"Until then, start cadnano2 with its full path:  {bin_dir / COMMAND}")
-    info("The desktop shortcut works regardless of PATH.")
+    info(f"Or start cadnano2 by full path:  {bin_dir / COMMAND}")
 
 
 def configure_path(bin_dir, assume_yes):
@@ -859,7 +847,7 @@ def main():
 
     if os.name == "nt":
         if not already_on_path(bin_dir):
-            configure_windows_path(uv, bin_dir, args.yes)
+            report_windows_path(bin_dir)
         if not args.no_shortcut:
             create_windows_shortcut(bin_dir)
     elif not already_on_path(bin_dir):
