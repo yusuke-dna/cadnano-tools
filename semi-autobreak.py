@@ -20,6 +20,7 @@ def get_args():
     parser.add_argument('-connect', '-reconnect' '-c', dest='connect', action='store_true', help='Reconnect all break point of staples, by halting autobreak script')
     parser.add_argument('-color', '-colour' '-intermediate' '-i', dest='color', action='store_true', help='Leave intermediate JSON file displaying autobroken staples in green')
     parser.add_argument('-limit', '-threshold', '-t', dest='limit', type=int, default=5000, help='5000 by default. Limiter to prevent combinatorial explosion. The threshold to apply filter (below) breaking pattern variation. For low restriction designs (long average domain length), weight (**(optimal_seed_len/average_domain_len)) is automatically applied to reduce wasteful calculation cost, resulting in no siginficant differences')
+    parser.add_argument('-resign', '-limit2', '-r', dest='resign', type=int, default=50000, help='50000 by default. Limiter to prevent combinatorial explosion, for the case no pattern found. The threshold to apply filter (below) breaking pattern variation. For low restriction designs (long average domain length), weight (**(optimal_seed_len/average_domain_len)) is automatically applied to reduce wasteful calculation cost, resulting in no siginficant differences')
     parser.add_argument('-filter', '-screen', '-f', dest='filter', type=int, default=100, help='100 by default. Filter to prevent combinatorial explosion. The pattern exceeding threshold (above) will be filtered to this number. For low restriction designs (long average domain length), weight (**(optimal_seed_len/average_domain_len)) is automatically applied to reduce wasteful calculation cost, resulting in no siginficant differences')
     parser.add_argument('-distance', '-d', dest='distance', type=int, default=3, help='3 for honeycomb lattice or 4 for square lattice by default, apart from the case path panel width is multiple of 672, regarding it as honeycomb lattice. Distance from 5-/3-end of staple and staple crossover (not considering scaffold crossover)')   
     parser.add_argument('-penalty', '-rate', '-p', dest='penalty', type=float, default=0.3, help='0.3 by default. Penalty for acceptable seed length vs optimal. The score of acceptable seed length is multiplied by this value.')
@@ -275,7 +276,7 @@ def short_domain_counter(count_list,short_domain_list) -> list:
         count_list[helix_id] += 1
     return count_list
 
-def autobreak_search(input_seq: str, min_length=args.min, max_length=args.max, acceptable_seed_len=args.acceptable, optimal_seed_len=args.optimal, limit_num=args.limit, filter_num=args.filter, distance=distance, penalty_rate=args.penalty) -> list:
+def autobreak_search(input_seq: str, min_length=args.min, max_length=args.max, acceptable_seed_len=args.acceptable, optimal_seed_len=args.optimal, limit_num=args.limit, resign_num=args.resign, filter_num=args.filter, distance=distance, penalty_rate=args.penalty) -> list:
     char_counts = {}
     middle_seq = input_seq.strip('^!')
     i = 0   # index of middle_seq, to specify a letter in the sequence
@@ -351,13 +352,20 @@ def autobreak_search(input_seq: str, min_length=args.min, max_length=args.max, a
         if average_domain_length > 0:
             weight_limit = int(limit_num ** (min(1, optimal_seed_len/average_domain_length))) # if the strand is continuous sequence, apply weight to limit to reduce wasteful calculation
             weight_filter = int(filter_num ** (min(1, optimal_seed_len/average_domain_length))) # if the strand is continuous sequence, apply weight to limit to reduce wasteful calculation
+            weight_resign = int(resign_num ** (min(1, optimal_seed_len/average_domain_length))) # if the strand is continuous sequence, apply weight to limit to reduce wasteful calculation
         else:
             weight_limit = 1
             weight_filter = 1
+            weight_resign = 1
         if not new_patterns:  # No new patterns found in this iteration
             completed = True
-        elif len(new_patterns) > weight_limit:  # for each cycle, if the pattern exceed limit, filtered to top 1000th score, with risk of listing local optimum.
+        elif len(new_patterns) > weight_limit and len(final_patterns) > filter_num:  # for each cycle, if the pattern exceed limit, with candidate, filtered to top 1000th score, with risk of listing local optimum.
             print(f'calculation is filtered to top {weight_filter} patterns as pattern limit reached: {len(new_patterns)}/{weight_limit}')
+            print(f'found {len(final_patterns)} breaking patterns and still searching from rest {len(new_patterns)} patterns ...')
+            top_scored_patterns = sorted(new_patterns, key=lambda x: x['score'], reverse=True)[:weight_filter]
+            new_patterns = top_scored_patterns
+        elif len(new_patterns) > weight_resign:  # for each cycle, if the pattern exceed resign limit, filtered to top 1000th score, with risk of listing local optimum.
+            print(f'calculation is filtered to top {weight_filter} patterns as pattern resign limit reached: {len(new_patterns)}/{weight_resign}')
             print(f'found {len(final_patterns)} breaking patterns and still searching from rest {len(new_patterns)} patterns ...')
             top_scored_patterns = sorted(new_patterns, key=lambda x: x['score'], reverse=True)[:weight_filter]
             new_patterns = top_scored_patterns
