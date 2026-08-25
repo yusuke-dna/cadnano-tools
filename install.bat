@@ -57,6 +57,8 @@ if not defined UV (
 
 echo Using uv at "%UV%"
 echo(
+rem Tells setup.py a launcher already announced the uv in use.
+set "CADNANO_LAUNCHER=1"
 
 rem --script keeps uv from treating a surrounding directory as a project and
 rem makes it honour the requires-python line in setup.py's inline metadata.

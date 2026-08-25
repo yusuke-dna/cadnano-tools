@@ -90,7 +90,7 @@ uv was not found on this system, so it will be installed now.
   where     $uv_dest
   rights    no administrator privileges required
 
-The installer also adds $uv_dest to your shell configuration.
+The installer also adds that directory to your shell configuration.
 To skip this step, install uv yourself and re-run:
     curl -LsSf $INSTALLER_URL | sh
 ========================================================================
@@ -134,6 +134,9 @@ fi
 Open a new terminal, which will pick up the updated PATH, and re-run this script."
 
 printf 'Using uv at %s\n' "$uv"
+# Tells setup.py a launcher already announced the uv in use.
+CADNANO_LAUNCHER=1
+export CADNANO_LAUNCHER
 
 # --script keeps uv from treating a surrounding directory as a project and
 # makes it honour the requires-python line in setup.py's inline metadata.
