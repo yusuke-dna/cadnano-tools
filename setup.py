@@ -758,7 +758,8 @@ def configure_path(bin_dir, assume_yes):
 
     info("")
     info(f"Detected login shell: {shell}")
-    info(f"{bin_dir} is not on your PATH, so `{COMMAND}` would not be found.")
+    info(f"This directory is not on your PATH, so `{COMMAND}` would not be found:")
+    info(f"    {bin_dir}")
     info(f"The following lines would be appended to {rc}:")
     info("")
     block = (
@@ -778,7 +779,8 @@ def configure_path(bin_dir, assume_yes):
     prefix = "" if (not existing or existing.endswith("\n")) else "\n"
     with rc.open("a", encoding="utf-8") as handle:
         handle.write(f"{prefix}\n{block}\n")
-    info(f"Updated {rc}. Open a new terminal for the change to take effect.")
+    info(f"Updated {rc}.")
+    info("Open a new terminal for the change to take effect.")
 
 
 def manual_path_instructions(bin_dir, shell):
@@ -935,11 +937,20 @@ def create_windows_shortcut(bin_dir):
     # cadnano2 is declared as a console script, so the plain .exe carries a
     # console window. WindowStyle 7 starts it minimised, out of the GUI's way.
     window_style = 1 if target.stem.endswith("w") else 7
+    # All paths travel through environment variables, never interpolated into
+    # the command: the shortcut may carry a user-chosen name (they can rename
+    # it), and an apostrophe in any of these would break single quoting.
+    env = dict(
+        os.environ,
+        CADNANO_LNK=str(shortcut),
+        CADNANO_TARGET=str(target),
+        CADNANO_WORKDIR=str(Path.home()),
+    )
     script = powershell_utf8(
         "$ws = New-Object -ComObject WScript.Shell; "
-        f"$sc = $ws.CreateShortcut('{shortcut}'); "
-        f"$sc.TargetPath = '{target}'; "
-        f"$sc.WorkingDirectory = '{Path.home()}'; "
+        "$sc = $ws.CreateShortcut($env:CADNANO_LNK); "
+        "$sc.TargetPath = $env:CADNANO_TARGET; "
+        "$sc.WorkingDirectory = $env:CADNANO_WORKDIR; "
         f"$sc.WindowStyle = {window_style}; "
         f"$sc.Description = '{'cadnano2 を起動' if JAPANESE_UI else 'Launch cadnano2'}'; "
         "$sc.Save()"
@@ -951,6 +962,7 @@ def create_windows_shortcut(bin_dir):
         ["powershell", "-NoProfile", "-Command", script],
         check=False,
         capture=True,
+        env=env,
     )
     if proc.returncode == 0:
         if renamed:
@@ -1446,7 +1458,10 @@ def main():
         return
 
     uv = find_uv() or bootstrap_uv()
-    info(f"Using uv at {uv}")
+    # The launchers already announce which uv they found; repeating it here
+    # would print the line twice, so it is shown only on a direct run.
+    if not os.environ.get("CADNANO_LAUNCHER"):
+        info(f"Using uv at {uv}")
 
     install_cadnano2(
         uv, args.python, args.system_certs, args.insecure, args.reinstall, args.upgrade
