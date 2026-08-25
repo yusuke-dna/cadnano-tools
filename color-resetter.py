@@ -49,6 +49,11 @@ def color_change(blueprint: dict, output_file: str, from_color: int = None, to_c
     write_json_file(output_file, blueprint)
 
 args = get_args()
+if (args.target is None and args.new is None):
+    pass  # no options: randomize every staple colour
+elif not args.target or not args.new:
+    print('Error: -target and -new must be specified together, as non-empty hex colours.')
+    exit(1)
 blueprint = load_json_file(args.input_file)
 if blueprint:
     from_color = hex_color_to_int(args.target) if args.target else None

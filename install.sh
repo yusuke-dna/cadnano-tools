@@ -21,6 +21,11 @@ INSTALLER_URL="https://astral.sh/uv/install.sh"
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 SETUP="$SCRIPT_DIR/setup.py"
 
+# User-facing dialogs are shown in Japanese on a Japanese locale; routine
+# output stays English. setup.py makes the same decision for its own dialogs.
+JA=""
+case "${LC_ALL:-${LC_MESSAGES:-${LANG:-}}}" in ja*) JA=1 ;; esac
+
 fail() {
     printf 'error: %s\n' "$1" >&2
     exit 1
@@ -38,10 +43,10 @@ find_uv() {
         "${UV_INSTALL_DIR:-}" \
         "${XDG_BIN_HOME:-}" \
         "${CARGO_HOME:-}/bin" \
-        "$HOME/.local/bin" \
-        "$HOME/.cargo/bin"
+        "${HOME:-}/.local/bin" \
+        "${HOME:-}/.cargo/bin"
     do
-        case $dir in "" | "/bin") continue ;; esac
+        case $dir in "" | "/bin" | "/.local/bin" | "/.cargo/bin") continue ;; esac
         if [ -x "$dir/uv" ]; then
             printf '%s\n' "$dir/uv"
             return 0
@@ -54,13 +59,27 @@ fetch() {
     if command -v curl >/dev/null 2>&1; then
         curl -fLsS --proto '=https' --tlsv1.2 -o "$2" "$1"
     elif command -v wget >/dev/null 2>&1; then
-        wget -q -O "$2" "$1"
+        # Match the curl branch's TLS posture. A wget without these options
+        # (busybox) may skip certificate verification entirely, so refuse it
+        # rather than run an installer fetched over an unverified connection.
+        # -nv keeps errors visible, unlike -q which silences them.
+        if wget --help 2>&1 | grep -q -- --https-only; then
+            wget -nv --https-only --secure-protocol=TLSv1_2 -O "$2" "$1"
+        elif [ -n "$JA" ]; then
+            fail "この wget は証明書検証付き HTTPS を強制できないため中止しました。
+curl をインストールして再実行してください。"
+        else
+            fail "this wget cannot enforce verified HTTPS; install curl and re-run"
+        fi
     else
         fail "neither curl nor wget is available to download the uv installer"
     fi
 }
 
 install_uv() {
+    # The official installer honours these variables; report the directory it
+    # will actually use rather than hardcoding the default.
+    uv_dest="${UV_INSTALL_DIR:-${XDG_BIN_HOME:-${HOME:-~}/.local/bin}}"
     cat <<END
 
 ========================================================================
@@ -68,10 +87,10 @@ uv was not found on this system, so it will be installed now.
 
   what      uv, the package manager used to install cadnano2
   source    $INSTALLER_URL  (official installer, Astral)
-  where     ~/.local/bin
+  where     $uv_dest
   rights    no administrator privileges required
 
-The installer also adds ~/.local/bin to your shell configuration.
+The installer also adds that directory to your shell configuration.
 To skip this step, install uv yourself and re-run:
     curl -LsSf $INSTALLER_URL | sh
 ========================================================================
@@ -83,7 +102,15 @@ END
 
     # Downloaded to a file first rather than piped straight into a shell, so a
     # truncated download cannot be executed halfway.
-    fetch "$INSTALLER_URL" "$tmpdir/install.sh"
+    if ! fetch "$INSTALLER_URL" "$tmpdir/install.sh"; then
+        if [ -n "$JA" ]; then
+            fail "uv インストーラーをダウンロードできませんでした:
+    $INSTALLER_URL"
+        else
+            fail "could not download the uv installer from:
+    $INSTALLER_URL"
+        fi
+    fi
     [ -s "$tmpdir/install.sh" ] || fail "the downloaded uv installer was empty"
     printf 'Downloaded installer (%s bytes).\n' "$(wc -c <"$tmpdir/install.sh" | tr -d ' ')"
 
@@ -107,6 +134,9 @@ fi
 Open a new terminal, which will pick up the updated PATH, and re-run this script."
 
 printf 'Using uv at %s\n' "$uv"
+# Tells setup.py a launcher already announced the uv in use.
+CADNANO_LAUNCHER=1
+export CADNANO_LAUNCHER
 
 # --script keeps uv from treating a surrounding directory as a project and
 # makes it honour the requires-python line in setup.py's inline metadata.

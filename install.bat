@@ -55,8 +55,10 @@ if not defined UV (
     goto :end
 )
 
-echo Using uv at %UV%
+echo Using uv at "%UV%"
 echo(
+rem Tells setup.py a launcher already announced the uv in use.
+set "CADNANO_LAUNCHER=1"
 
 rem --script keeps uv from treating a surrounding directory as a project and
 rem makes it honour the requires-python line in setup.py's inline metadata.
@@ -79,18 +81,22 @@ echo uv was not found on this system, so it will be installed now.
 echo(
 echo   what      uv, the package manager used to install cadnano2
 echo   source    %INSTALLER_URL%  (official installer, Astral)
-echo   where     %USERPROFILE%\.local\bin
+echo   where     "%USERPROFILE%\.local\bin"
 echo   rights    no administrator privileges required
 echo(
 echo To skip this step, install uv yourself and run this script again:
-echo     powershell -ExecutionPolicy ByPass -c "irm %INSTALLER_URL% ^| iex"
+echo     powershell -ExecutionPolicy ByPass -c "irm %INSTALLER_URL% | iex"
 echo ========================================================================
 echo(
 
 rem Downloaded to a file first rather than piped straight into a shell, so a
-rem truncated download cannot be executed halfway.
+rem truncated download cannot be executed halfway. The paths are read from the
+rem environment inside PowerShell rather than interpolated into the command
+rem line, so an apostrophe in the profile path cannot break the quoting.
 if exist "%UVSCRIPT%" del /q "%UVSCRIPT%"
-powershell -NoProfile -ExecutionPolicy Bypass -Command "irm '%INSTALLER_URL%' -OutFile '%UVSCRIPT%'"
+rem -Command is not subject to the execution policy, so no Bypass is needed
+rem here; the -File run below does need it, because policy governs .ps1 files.
+powershell -NoProfile -Command "irm $env:INSTALLER_URL -OutFile $env:UVSCRIPT"
 if errorlevel 1 (
     echo error: could not download the uv installer from %INSTALLER_URL% 1>&2
     set "EXITCODE=1"
@@ -123,15 +129,16 @@ rem up, so the fresh uv is reachable by full path only.
 call :probe "%USERPROFILE%\.local\bin\uv.exe"
 if defined UV_INSTALL_DIR call :probe "%UV_INSTALL_DIR%\uv.exe"
 if defined XDG_BIN_HOME call :probe "%XDG_BIN_HOME%\uv.exe"
-if defined UV echo uv installed at %UV%
+if defined UV echo uv installed at "%UV%"
 goto :eof
 
 
 :end
-rem Keep the window open when the file was double-clicked in Explorer, where
-rem cmd.exe closes the moment the batch ends and takes the output with it. A
-rem batch started from an existing Command Prompt does not appear in the
-rem command line cmd.exe itself was started with, so it is not paused.
+rem Keep the window open when cmd.exe was started just to run this file --
+rem an Explorer double-click, but also PowerShell and Windows Terminal, which
+rem launch a fresh `cmd /c` the same way -- because that window closes the
+rem moment the batch ends and takes the output with it. Only a batch started
+rem from an existing Command Prompt session skips the pause.
 set "CMDLINE=%cmdcmdline:"=%"
 echo "%CMDLINE%"| find /i "%~nx0" >nul
 if not errorlevel 1 (

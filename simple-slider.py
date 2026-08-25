@@ -23,15 +23,16 @@ with open(args.file_path, 'r') as f:
 
 def left_empty(vstrands, num):
     isempty = True
-    for i in range(num):
-        if vstrands['scaf'][i] != [-1,-1,-1,-1]:
-            isempty = False
-        if vstrands['stap'][i] != [-1,-1,-1,-1]:
-            isempty = False
-        if vstrands['loop'][i] != 0:
-            isempty = False
-        if vstrands['skip'][i] != 0:
-            isempty = False
+    for vstrand in vstrands:
+        for i in range(num):
+            if vstrand['scaf'][i] != [-1,-1,-1,-1]:
+                isempty = False
+            if vstrand['stap'][i] != [-1,-1,-1,-1]:
+                isempty = False
+            if vstrand['loop'][i] != 0:
+                isempty = False
+            if vstrand['skip'][i] != 0:
+                isempty = False
     return isempty
 
 if slide_num >= 0:
@@ -49,18 +50,20 @@ if slide_num >= 0:
         for j in range(len(cadnano_dict['vstrands'][i]['stap_colors'])):
             cadnano_dict['vstrands'][i]['stap_colors'][j][0] = cadnano_dict['vstrands'][i]['stap_colors'][j][0] + slide_num
 
+elif -slide_num >= len(cadnano_dict['vstrands'][0]['scaf']):
+    raise Exception('left slide must be smaller than the path panel width.')
 elif left_empty(cadnano_dict['vstrands'], -slide_num):
     for i in range(len(cadnano_dict['vstrands'])):
-        cadnano_dict['vstrands'][i]['scaf'] = cadnano_dict['vstrands'][i]['scaf'][slide_num:]
+        cadnano_dict['vstrands'][i]['scaf'] = cadnano_dict['vstrands'][i]['scaf'][-slide_num:]
         for j in range(len(cadnano_dict['vstrands'][i]['scaf'])):
             cadnano_dict['vstrands'][i]['scaf'][j][1] = -1 if cadnano_dict['vstrands'][i]['scaf'][j][1] == -1 else cadnano_dict['vstrands'][i]['scaf'][j][1] + slide_num
             cadnano_dict['vstrands'][i]['scaf'][j][3] = -1 if cadnano_dict['vstrands'][i]['scaf'][j][3] == -1 else cadnano_dict['vstrands'][i]['scaf'][j][3] + slide_num
-        cadnano_dict['vstrands'][i]['stap'] = cadnano_dict['vstrands'][i]['stap'][slide_num:]
+        cadnano_dict['vstrands'][i]['stap'] = cadnano_dict['vstrands'][i]['stap'][-slide_num:]
         for j in range(len(cadnano_dict['vstrands'][i]['stap'])):
             cadnano_dict['vstrands'][i]['stap'][j][1] = -1 if cadnano_dict['vstrands'][i]['stap'][j][1] == -1 else cadnano_dict['vstrands'][i]['stap'][j][1] + slide_num
             cadnano_dict['vstrands'][i]['stap'][j][3] = -1 if cadnano_dict['vstrands'][i]['stap'][j][3] == -1 else cadnano_dict['vstrands'][i]['stap'][j][3] + slide_num
-        cadnano_dict['vstrands'][i]['loop'] = cadnano_dict['vstrands'][i]['loop'][slide_num:]
-        cadnano_dict['vstrands'][i]['skip'] = cadnano_dict['vstrands'][i]['skip'][slide_num:]
+        cadnano_dict['vstrands'][i]['loop'] = cadnano_dict['vstrands'][i]['loop'][-slide_num:]
+        cadnano_dict['vstrands'][i]['skip'] = cadnano_dict['vstrands'][i]['skip'][-slide_num:]
         for j in range(len(cadnano_dict['vstrands'][i]['stap_colors'])):
             cadnano_dict['vstrands'][i]['stap_colors'][j][0] = cadnano_dict['vstrands'][i]['stap_colors'][j][0] + slide_num
 else:
