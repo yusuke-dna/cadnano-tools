@@ -28,6 +28,17 @@ from pathlib import Path
 PACKAGE = "cadnano2"
 COMMAND = "cadnano2"
 
+# Child output is decoded as UTF-8 below, so re-printing it must never crash
+# on a character the console encoding cannot represent -- on Windows a
+# redirected stdout encodes with the ANSI code page and errors='strict', and
+# uv's box-drawing characters (or U+FFFD from a lossy decode) would raise
+# UnicodeEncodeError right where an error message was about to be shown.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(errors="replace")
+    except (AttributeError, OSError, ValueError):
+        pass
+
 # PyQt6 wheels are cp310-abi3, so anything from 3.10 works. 3.12 is pinned as a
 # conservative, widely tested default rather than tracking the newest release.
 DEFAULT_PYTHON = "3.12"
@@ -92,9 +103,14 @@ def run(cmd, check=True, capture=False, env=None, timeout=None):
     """
     info("$ " + " ".join(str(part) for part in cmd))
     try:
+        # uv always writes UTF-8, while text=True alone would decode with the
+        # locale encoding -- cp932 on Japanese Windows -- and crash on any
+        # non-ASCII path in the output, such as a Japanese user name.
         proc = subprocess.run(
             [str(part) for part in cmd],
             text=True,
+            encoding="utf-8",
+            errors="replace",
             capture_output=capture,
             env=env,
             timeout=timeout,
@@ -110,6 +126,30 @@ def run(cmd, check=True, capture=False, env=None, timeout=None):
     if check and proc.returncode != 0:
         fail(f"command failed with exit code {proc.returncode}")
     return proc
+
+
+def japanese_ui():
+    """True when the user's interface language is Japanese.
+
+    Only the decision-point dialogs introduced with the shortcut/conflict
+    handling are translated; routine progress output stays English so logs
+    remain greppable and support requests stay readable.
+    """
+    for name in ("LC_ALL", "LC_MESSAGES", "LANG"):
+        value = os.environ.get(name)
+        if value:
+            return value.lower().startswith("ja")
+    if os.name == "nt":
+        try:
+            import ctypes
+
+            return (ctypes.windll.kernel32.GetUserDefaultUILanguage() & 0x3FF) == 0x11
+        except Exception:
+            return False
+    return False
+
+
+JAPANESE_UI = japanese_ui()
 
 
 def confirm(question, assume_yes):
@@ -270,7 +310,12 @@ def uv_version(uv):
         parsed = None
         try:
             proc = subprocess.run(
-                [key, "--version"], text=True, capture_output=True, timeout=30
+                [key, "--version"],
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                capture_output=True,
+                timeout=30,
             )
             if proc.returncode == 0:
                 match = re.search(r"(\d+)\.(\d+)\.(\d+)", proc.stdout or "")
@@ -355,9 +400,12 @@ def install_cadnano2(uv, python_version, system_certs, insecure, reinstall, upgr
                 last = python_proc
                 if index + 1 < len(attempts) and looks_like_tls_failure(python_proc):
                     continue
+                outdated = outdated_uv_guidance(python_proc)
+                if outdated:
+                    fail(f"could not obtain a uv-managed Python {python_version}: {outdated}")
                 fail(
                     f"could not obtain a uv-managed Python {python_version}.\n"
-                    + tls_guidance(python_proc)
+                    + python_download_guidance(python_proc)
                 )
 
         last = run(base + extra, check=False, capture=True, env=env)
@@ -381,6 +429,65 @@ def insecure_flags():
     ]
 
 
+def outdated_uv_guidance(proc):
+    """A clap error about --managed-python means this uv predates the flag."""
+    output = ((proc.stdout or "") + (proc.stderr or "")) if proc else ""
+    if "unexpected argument" in output and "--managed-python" in output:
+        if JAPANESE_UI:
+            return (
+                "このシステムの uv は古く、--managed-python を解釈できません。\n"
+                "`uv self update`(または uv を入れたパッケージマネージャー)で\n"
+                "更新してから、このスクリプトを再実行してください。"
+            )
+        return (
+            "the uv found on this system is too old to understand\n"
+            "--managed-python. Upgrade it with `uv self update` (or with the\n"
+            "package manager that installed it) and run this script again."
+        )
+    return None
+
+
+def python_download_guidance(proc):
+    """Guidance for a failing `uv python install`.
+
+    The interpreter archives come from GitHub, not PyPI, so the pypi.org-only
+    --allow-insecure-host escape hatch does not apply here and must not be
+    recommended.
+    """
+    if proc is None or not looks_like_tls_failure(proc):
+        return "Check the output above for the underlying error."
+    # By the time this shows, the system certificate store has already been
+    # tried (the install flow retries with it automatically), so recommending
+    # --system-certs here would just repeat what failed. The steps are ordered
+    # by what a user can actually do without help.
+    if JAPANESE_UI:
+        return (
+            "\nPython 本体を安全にダウンロードできませんでした。このネットワークが\n"
+            "通信内容を検査する構成(大学や企業でよくある設定)の場合に、この\n"
+            "症状になります。対処のおすすめ順:\n"
+            "  1. 別のネットワークで再実行する(自宅の Wi-Fi やスマートフォンの\n"
+            "     テザリングなど)。ダウンロードが必要なのはインストール時だけで、\n"
+            "     その後は元のネットワークでも問題なく使えます。\n"
+            "  2. 解決しない場合は、所属機関の IT 部門に「この端末に組織のルート\n"
+            "     証明書が配布されているか」を確認してもらい、再実行してください。\n"
+            "  3. 技術者向け: CA バンドルを直接指定して再実行できます:\n"
+            "       export SSL_CERT_FILE=/path/to/ca-bundle.pem"
+        )
+    return (
+        "\nThe Python interpreter itself could not be downloaded securely. This\n"
+        "usually means the network inspects TLS traffic, which is common at\n"
+        "universities and companies. Options, in order of preference:\n"
+        "  1. Re-run on a different network (home Wi-Fi or a phone hotspot).\n"
+        "     Only the installation needs the download; afterwards cadnano2\n"
+        "     works fine on this network too.\n"
+        "  2. If that is not possible, ask your IT department whether the\n"
+        "     organisation's root certificate is deployed to this machine,\n"
+        "     then re-run this installer.\n"
+        "  3. For technicians: point uv at a CA bundle directly:\n"
+        "       export SSL_CERT_FILE=/path/to/ca-bundle.pem"
+    )
+
+
 def tls_guidance(proc):
     if proc is None or not looks_like_tls_failure(proc):
         return "Check the output above for the underlying error."
@@ -399,13 +506,20 @@ def tls_guidance(proc):
 
 
 def report_install_failure(proc):
+    outdated = outdated_uv_guidance(proc)
+    if outdated:
+        fail(f"could not install {PACKAGE}: {outdated}")
     fail(f"could not install {PACKAGE}.\n" + tls_guidance(proc))
 
 
 def tool_bin_dir(uv):
     """Directory uv links tool executables into."""
     proc = subprocess.run(
-        [uv, "tool", "dir", "--bin"], text=True, capture_output=True
+        [uv, "tool", "dir", "--bin"],
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        capture_output=True,
     )
     if proc.returncode == 0 and proc.stdout.strip():
         return Path(proc.stdout.strip())
@@ -493,14 +607,19 @@ def path_variants(bin_dir):
 
 def mentions_bin_dir(text, bin_dir):
     """Line numbers that put bin_dir on PATH, ignoring commented-out lines."""
-    variants = path_variants(bin_dir)
+    # The match must end at a path boundary, so `$HOME/.local/bin` is not
+    # satisfied by `$HOME/.local/binaries` or `$HOME/.local/bin/tools`.
+    patterns = [
+        re.compile(re.escape(variant) + r"(?![\w/-])")
+        for variant in path_variants(bin_dir)
+    ]
     hits = []
     for number, line in enumerate(text.splitlines(), start=1):
         stripped = line.strip()
         # Case-insensitive: fish spells it `fish_add_path`, sh spells it `PATH`.
         if stripped.startswith("#") or "path" not in stripped.lower():
             continue
-        if any(variant in stripped for variant in variants):
+        if any(pattern.search(stripped) for pattern in patterns):
             hits.append(number)
     return hits
 
@@ -565,21 +684,49 @@ def report_windows_path(bin_dir):
     """
     if windows_path_contains(windows_user_path(), bin_dir):
         info("")
-        info(f"{bin_dir} is on your user PATH.")
-        info("Open a NEW Command Prompt to use `cadnano2` -- a window that was")
-        info("already open keeps the PATH it started with.")
+        if JAPANESE_UI:
+            info("次のディレクトリはユーザー PATH に登録されています:")
+            info(f"    {bin_dir}")
+            info("新しいコマンドプロンプトを開くと `cadnano2` が使えます。")
+        else:
+            info("This directory is on your user PATH:")
+            info(f"    {bin_dir}")
+            info("Open a NEW Command Prompt to use `cadnano2`.")
         return
 
     info("")
-    info(f"{bin_dir} is not on your PATH, so `{COMMAND}` will not run from")
-    info("cmd.exe or PowerShell. The desktop shortcut works either way.")
+    if JAPANESE_UI:
+        info("次のディレクトリが PATH にないため、cmd.exe や PowerShell から")
+        info(f"`{COMMAND}` は起動できません(デスクトップのショートカットは使えます):")
+        info(f"    {bin_dir}")
+        info("")
+        info("コマンドラインを有効にするには、次を実行してから新しいコマンド")
+        info("プロンプトを開いてください:")
+        info("    uv tool update-shell")
+        info("")
+        info("手動で設定する場合: スタートメニューで「環境変数」を検索し、")
+        info('ユーザーの "Path" に次を追加してください:')
+        info(f"    {bin_dir}")
+        info("")
+        info("フルパスでの起動も可能です:")
+        info(f"    {bin_dir / COMMAND}")
+        return
+    info(f"This directory is not on your PATH, so `{COMMAND}` will not run")
+    info("from cmd.exe or PowerShell (the desktop shortcut works either way):")
+    info(f"    {bin_dir}")
     info("")
-    info("To enable the command line, run one of these yourself and then open")
-    info("a new Command Prompt:")
+    info("To enable the command line, run this yourself and then open a new")
+    info("Command Prompt:")
     info("    uv tool update-shell")
-    info(f'    setx PATH "%PATH%;{bin_dir}"')
     info("")
-    info(f"Or start cadnano2 by full path:  {bin_dir / COMMAND}")
+    # setx is deliberately not suggested here: it truncates the stored PATH at
+    # 1024 characters and merges the machine PATH into the user PATH.
+    info("Or add the directory by hand: search the Start menu for")
+    info('"environment variables", edit the user "Path" entry and add:')
+    info(f"    {bin_dir}")
+    info("")
+    info("Or start cadnano2 by full path:")
+    info(f"    {bin_dir / COMMAND}")
 
 
 def configure_path(bin_dir, assume_yes):
@@ -709,12 +856,29 @@ def report_legacy_venv():
 # --------------------------------------------------------------------------
 
 
+def powershell_utf8(body):
+    """Wrap a PowerShell command so its output is written as UTF-8.
+
+    Pinning the console encoding lets a path containing a Japanese (or any
+    non-ASCII) user name survive the pipe regardless of the system code page.
+    The previous encoding is restored afterwards, because the child shares
+    the parent console and the change would otherwise outlive this script.
+    """
+    return (
+        "$__oe=[Console]::OutputEncoding; "
+        "[Console]::OutputEncoding=[Text.Encoding]::UTF8; "
+        "try { " + body + " } finally { [Console]::OutputEncoding=$__oe }"
+    )
+
+
 def windows_desktop_dir():
     """Ask Windows where Desktop actually is; OneDrive commonly redirects it."""
     proc = subprocess.run(
         ["powershell", "-NoProfile", "-Command",
-         "[Environment]::GetFolderPath('Desktop')"],
+         powershell_utf8("[Environment]::GetFolderPath('Desktop')")],
         text=True,
+        encoding="utf-8",
+        errors="replace",
         capture_output=True,
     )
     if proc.returncode == 0 and proc.stdout.strip():
@@ -734,7 +898,13 @@ def find_windows_launcher(bin_dir):
 
 
 def create_windows_shortcut(bin_dir):
-    """Create a desktop shortcut via PowerShell, so pywin32 is not needed."""
+    """Create or refresh a desktop shortcut via PowerShell, without pywin32.
+
+    Targets decide, not names: a shortcut already pointing at this
+    installation is refreshed under whatever name the user gave it, while a
+    cadnano2.lnk they made for some other installation is never overwritten
+    -- the new shortcut is created as "cadnano2 (new)" beside it instead.
+    """
     target = find_windows_launcher(bin_dir)
     if target is None:
         warn(f"no {COMMAND} executable found in {bin_dir}; skipping desktop shortcut")
@@ -745,29 +915,338 @@ def create_windows_shortcut(bin_dir):
         warn(f"{desktop} not found; skipping desktop shortcut")
         return
 
-    shortcut = desktop / f"{COMMAND}.lnk"
+    existing = desktop_shortcuts(desktop)
+    ours = [lnk for lnk, lnk_target in existing
+            if shortcut_points_at_install(lnk_target, bin_dir)]
+    renamed = False
+    if ours:
+        shortcut = ours[0]  # keep the name the user knows, even if they renamed it
+    else:
+        # Keep appending " (new)" until a free name turns up; the taken set is
+        # finite, so this always terminates, and the announcement below shows
+        # whichever name was actually used.
+        taken = {lnk.name.lower() for lnk, _ in existing}
+        stem = COMMAND
+        shortcut = desktop / f"{stem}.lnk"
+        while shortcut.name.lower() in taken:
+            stem += " (new)"
+            shortcut = desktop / f"{stem}.lnk"
+            renamed = True
     # cadnano2 is declared as a console script, so the plain .exe carries a
     # console window. WindowStyle 7 starts it minimised, out of the GUI's way.
     window_style = 1 if target.stem.endswith("w") else 7
-    script = (
+    script = powershell_utf8(
         "$ws = New-Object -ComObject WScript.Shell; "
         f"$sc = $ws.CreateShortcut('{shortcut}'); "
         f"$sc.TargetPath = '{target}'; "
         f"$sc.WorkingDirectory = '{Path.home()}'; "
         f"$sc.WindowStyle = {window_style}; "
-        "$sc.Description = 'Launch cadnano2'; "
+        f"$sc.Description = '{'cadnano2 を起動' if JAPANESE_UI else 'Launch cadnano2'}'; "
         "$sc.Save()"
     )
+    # -Command is not subject to the execution policy (only script files are),
+    # so "-ExecutionPolicy Bypass" is not needed -- and the Bypass keyword is
+    # exactly what antivirus heuristics watch for, so it is deliberately absent.
     proc = run(
-        ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-c", script],
+        ["powershell", "-NoProfile", "-Command", script],
         check=False,
         capture=True,
     )
     if proc.returncode == 0:
+        if renamed:
+            if JAPANESE_UI:
+                info(f"既存の {COMMAND} ショートカットは別のインストール先を指しているため")
+                info(f'そのまま残し、こちらは "{shortcut.stem}" として作成しました。')
+            else:
+                info(f"An existing {COMMAND} shortcut points at another installation and")
+                info(f'was left untouched; this one was installed as "{shortcut.stem}".')
         info(f"Shortcut created at {shortcut}")
     else:
         # The GUI itself installed fine, so this is not a fatal failure.
         warn(f"could not create the desktop shortcut; run {target} directly")
+
+
+def shortcut_points_at_install(target, bin_dir):
+    """True if a .lnk target is one of this installation's own launchers.
+
+    Both the directory and the executable name are checked: a shortcut the
+    user pointed at some other program that merely lives in the same bin
+    directory is not ours to replace or delete.
+    """
+    if target is None:
+        return False
+    launchers = {f"{COMMAND}w.exe", f"{COMMAND}-gui.exe", f"{COMMAND}.exe"}
+    return (
+        os.path.normcase(os.path.normpath(str(target.parent)))
+        == os.path.normcase(os.path.normpath(str(bin_dir)))
+        and target.name.lower() in launchers
+    )
+
+
+def desktop_shortcuts(desktop):
+    """[(path, target)] for every .lnk on the desktop, in one PowerShell call.
+
+    Shortcut names are user-editable, so anything that needs to know which
+    shortcut belongs to this installation must go by target, not by name.
+    The desktop path travels through an environment variable rather than
+    being interpolated into the command, so quoting cannot break on
+    apostrophes or non-ASCII characters; '|' separates the fields because
+    it cannot occur in a Windows path.
+    """
+    env = dict(os.environ, CADNANO_DESKTOP=str(desktop))
+    body = (
+        "$ws = New-Object -ComObject WScript.Shell; "
+        "Get-ChildItem -LiteralPath $env:CADNANO_DESKTOP -Filter *.lnk | "
+        "ForEach-Object { $_.FullName + '|' + $ws.CreateShortcut($_.FullName).TargetPath }"
+    )
+    try:
+        proc = subprocess.run(
+            ["powershell", "-NoProfile", "-Command", powershell_utf8(body)],
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            capture_output=True,
+            env=env,
+        )
+    except OSError:
+        return []
+    if proc.returncode != 0:
+        return []
+    pairs = []
+    for line in (proc.stdout or "").splitlines():
+        if "|" not in line:
+            continue
+        path_text, target_text = line.split("|", 1)
+        if path_text.strip():
+            target = Path(target_text.strip()) if target_text.strip() else None
+            pairs.append((Path(path_text.strip()), target))
+    return pairs
+
+
+# --------------------------------------------------------------------------
+# Conflict detection: other cadnano2 installations and conda
+# --------------------------------------------------------------------------
+
+
+def other_installations(bin_dir):
+    """Every cadnano2 on PATH that is NOT the one in bin_dir, in PATH order.
+
+    Nothing found here is ever removed: a cadnano2 the user installed
+    themselves (pip, conda, an old venv) is not this script's to touch.
+    Comparison and deduplication work on fully resolved paths, so the same
+    file reached through a symlinked directory or a `..` spelling is neither
+    double-reported nor mistaken for a second installation.
+    """
+    bin_dir = Path(bin_dir)
+    try:
+        expected = bin_dir.resolve()
+    except OSError:
+        expected = bin_dir
+
+    # uv links bin_dir/cadnano2 into the tool environment, so anything that
+    # resolves to the same final file is this installation too, however many
+    # symlinks it was reached through.
+    our_target = None
+    ours = shutil.which(COMMAND, path=str(bin_dir))
+    if ours:
+        try:
+            our_target = Path(ours).resolve()
+        except OSError:
+            our_target = Path(ours)
+
+    others = []
+    seen = set()
+    for entry in os.environ.get("PATH", "").split(os.pathsep):
+        if not entry.strip():
+            continue
+        found = shutil.which(COMMAND, path=entry)
+        if not found:
+            continue
+        candidate = Path(found)
+        try:
+            resolved = candidate.resolve()
+        except OSError:
+            resolved = candidate
+        try:
+            parent_resolved = candidate.parent.resolve()
+        except OSError:
+            parent_resolved = candidate.parent
+        if parent_resolved == expected or resolved == our_target:
+            continue
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        others.append(candidate)
+    return others
+
+
+def report_command_conflicts(bin_dir):
+    """Warn when a different cadnano2 on PATH may shadow this installation."""
+    others = other_installations(bin_dir)
+    if not others:
+        return
+    resolved = shutil.which(COMMAND)
+    info("")
+    if JAPANESE_UI:
+        warn(f"このインストールとは別の {COMMAND} が見つかりました:")
+        for other in others:
+            info(f"    {other}")
+        if resolved:
+            info(f"この端末で `{COMMAND}` と入力した場合に起動するのは:")
+            info(f"    {resolved}")
+        info("PATH で先に現れる方が優先されます。このスクリプトは自分が入れて")
+        info("いないものを削除しません。不要であれば、それを入れたツール")
+        info("(pip や conda、または仮想環境ごと削除)で取り除いてください。")
+    else:
+        warn(f"another {COMMAND} is installed outside this installation:")
+        for other in others:
+            info(f"    {other}")
+        if resolved:
+            info(f"In this terminal, `{COMMAND}` currently starts:")
+            info(f"    {resolved}")
+        info("Whichever comes first on PATH wins. This script never removes what it")
+        info("did not install; if the other copy is unwanted, remove it with the")
+        info("tool that installed it (pip, conda, or by deleting its environment).")
+
+
+# --------------------------------------------------------------------------
+# Local fix for a known upstream crash
+# --------------------------------------------------------------------------
+
+
+def patch_documentwindow(uv):
+    """Guard a known cadnano2 crash: a window event before __init__ finishes.
+
+    Upstream cadnano2's DocumentWindow.moveEvent/resizeEvent read
+    self.settings, which __init__ assigns only after setupUi(); if the OS
+    repositions the window during construction -- typical when the saved
+    window position points at an external display -- the handler raises and
+    PyQt6 aborts the whole process. Upgrading or reinstalling restores the
+    unpatched file, so the guard is re-applied after every install.
+    """
+    try:
+        proc = subprocess.run(
+            [uv, "tool", "dir"],
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            capture_output=True,
+        )
+    except OSError:
+        return
+    if proc.returncode != 0 or not proc.stdout.strip():
+        return
+    tools = Path(proc.stdout.strip())
+    targets = list(
+        tools.glob(f"{PACKAGE}/[Ll]ib/**/site-packages/cadnano2/views/documentwindow.py")
+    )
+    if not targets:
+        return
+
+    guard = "if not hasattr(self, 'settings'):"
+    pattern = re.compile(
+        r"(    def (?:move|resize)Event\(self, event\):\n"
+        r'(?:        """[^\n]*"""\n)?)'
+        r"(        self\.settings\.beginGroup)"
+    )
+    replacement = (
+        "\\1        if not hasattr(self, 'settings'):\n"
+        "            return\n"
+        "\\2"
+    )
+
+    for target in targets:
+        try:
+            source = target.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as exc:
+            warn(f"could not read {target} to apply the known-crash guard: {exc}")
+            continue
+        if guard in source:
+            continue  # already patched; a re-run should stay quiet
+        patched, count = pattern.subn(replacement, source)
+        if count == 0:
+            warn(
+                "cadnano2's window code no longer matches the known-crash guard;\n"
+                "         skipping the local fix (upstream may have fixed it)."
+            )
+            continue
+        try:
+            compile(patched, str(target), "exec")
+            target.write_text(patched, encoding="utf-8")
+        except (OSError, SyntaxError) as exc:
+            warn(f"could not apply the known-crash guard to {target}: {exc}")
+            continue
+        # Routine maintenance the user need not act on: silent on Windows
+        # (double-clicked install.bat), a brief English note on install.sh.
+        if os.name != "nt":
+            info("Applied a local guard for a known cadnano2 crash (window moved")
+            info("before initialisation finished, e.g. on an external display).")
+
+
+LAUNCH_GUARD_MARKER = "# >>> cadnano-tools launch guard >>>"
+LAUNCH_GUARD = (
+    "# >>> cadnano-tools launch guard >>>\n"
+    "# Added by cadnano-tools setup.py. conda activation and similar tools leak\n"
+    "# QT_PLUGIN_PATH and PYTHONPATH into this otherwise isolated environment,\n"
+    "# which can point Qt at foreign plugins and stop the window from opening.\n"
+    "# Both are neutralised here, for cadnano2's own process only, before Qt\n"
+    "# loads. Deleting this whole block is safe.\n"
+    "def _cadnano_tools_launch_guard():\n"
+    "    import os, sys\n"
+    "    for name in ('QT_PLUGIN_PATH', 'QT_QPA_PLATFORM_PLUGIN_PATH'):\n"
+    "        os.environ.pop(name, None)\n"
+    "    pythonpath = os.environ.get('PYTHONPATH')\n"
+    "    if pythonpath:\n"
+    "        bad = {os.path.abspath(p) for p in pythonpath.split(os.pathsep) if p}\n"
+    "        sys.path[:] = [p for p in sys.path if os.path.abspath(p) not in bad]\n"
+    "\n"
+    "\n"
+    "_cadnano_tools_launch_guard()\n"
+    "del _cadnano_tools_launch_guard\n"
+    "# <<< cadnano-tools launch guard <<<\n"
+)
+
+
+def patch_launch_guard(uv):
+    """Neutralise environment leaks that would break launching the GUI.
+
+    uv's isolation covers packages, not the process environment: Python
+    honours PYTHONPATH inside any environment, and Qt honours the plugin-path
+    variables conda exports. Rather than warning the user about variables
+    they did not set and may not understand, the installed package itself
+    strips them at import time. Re-applied after every install, like the
+    crash guard above.
+    """
+    try:
+        proc = subprocess.run(
+            [uv, "tool", "dir"],
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            capture_output=True,
+        )
+    except OSError:
+        return
+    if proc.returncode != 0 or not proc.stdout.strip():
+        return
+    tools = Path(proc.stdout.strip())
+    targets = list(
+        tools.glob(f"{PACKAGE}/[Ll]ib/**/site-packages/cadnano2/__init__.py")
+    )
+    for target in targets:
+        try:
+            source = target.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as exc:
+            warn(f"could not read {target} to apply the launch guard: {exc}")
+            continue
+        if LAUNCH_GUARD_MARKER in source:
+            continue  # already guarded; a re-run should stay quiet
+        patched = LAUNCH_GUARD + source
+        try:
+            compile(patched, str(target), "exec")
+            target.write_text(patched, encoding="utf-8")
+        except (OSError, SyntaxError) as exc:
+            warn(f"could not apply the launch guard to {target}: {exc}")
 
 
 # --------------------------------------------------------------------------
@@ -778,12 +1257,45 @@ def create_windows_shortcut(bin_dir):
 def uninstall(uv):
     if not uv:
         fail("uv was not found, so there is nothing for this script to uninstall")
+    bin_dir = tool_bin_dir(uv)
     run([uv, "tool", "uninstall", PACKAGE], check=False)
     if os.name == "nt":
-        shortcut = Path(os.environ.get("USERPROFILE", Path.home())) / "Desktop" / f"{COMMAND}.lnk"
-        if shortcut.exists():
-            shortcut.unlink()
-            info(f"Removed {shortcut}")
+        # The shortcut was created on the desktop Windows reports, which
+        # OneDrive commonly redirects; also sweep the unredirected location
+        # in case an older run of this script put it there. Shortcuts are
+        # matched by target rather than by name -- the user may have renamed
+        # ours -- and only ones pointing at this installation are deleted: a
+        # shortcut to some other cadnano2 is not ours to remove.
+        desktops = {
+            windows_desktop_dir(),
+            Path(os.environ.get("USERPROFILE", Path.home())) / "Desktop",
+        }
+        for desktop in desktops:
+            if not desktop.is_dir():
+                continue
+            for lnk, lnk_target in desktop_shortcuts(desktop):
+                if shortcut_points_at_install(lnk_target, bin_dir):
+                    try:
+                        lnk.unlink()
+                        info(f"Removed {lnk}")
+                    except OSError as exc:
+                        warn(f"could not remove {lnk}: {exc}")
+                elif lnk.stem.lower().startswith(COMMAND):
+                    if JAPANESE_UI:
+                        info(f"{lnk} は残しました: このインストールを指していないため")
+                    else:
+                        info(f"Left {lnk} in place: it does not point at this installation")
+    remaining = other_installations(bin_dir)
+    if remaining:
+        info("")
+        if JAPANESE_UI:
+            info(f"注意: このスクリプトが入れたものではない別の {COMMAND} が PATH 上に")
+            info("残っています(こちらには手を付けていません):")
+        else:
+            info(f"Note: another {COMMAND} remains on PATH, not installed by this")
+            info("script and left untouched:")
+        for other in remaining:
+            info(f"    {other}")
     info("")
     info("If this script added a PATH entry, it is delimited by these markers")
     info("in your shell configuration file and can be removed by hand:")
@@ -864,7 +1376,13 @@ def do_check():
     uv = find_uv()
     info(f"uv:            {uv or 'not installed'}")
     if uv:
-        version = subprocess.run([uv, "--version"], text=True, capture_output=True)
+        version = subprocess.run(
+            [uv, "--version"],
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            capture_output=True,
+        )
         if version.returncode == 0:
             info(f"uv version:    {version.stdout.strip()}")
         info(f"system certs:  --system-certs uses {system_certs_variable(uv)}")
@@ -876,11 +1394,17 @@ def do_check():
             info(f"user PATH:     {'registered' if persisted else 'NOT registered'}")
             if persisted and on_path == "NO":
                 info("               (open a new Command Prompt to pick it up)")
-        listing = subprocess.run([uv, "tool", "list"], text=True, capture_output=True)
+        listing = subprocess.run(
+            [uv, "tool", "list"],
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            capture_output=True,
+        )
         installed = [
             line for line in (listing.stdout or "").splitlines() if line.startswith(PACKAGE)
         ]
-        info(f"{PACKAGE}:     {installed[0] if installed else 'not installed'}")
+        info(f"{PACKAGE}:      {installed[0] if installed else 'not installed'}")
 
     shell = detect_login_shell()
     info(f"login shell:   {shell or 'undetermined'}")
@@ -898,6 +1422,8 @@ def do_check():
 
     resolved = shutil.which(COMMAND)
     info(f"`{COMMAND}` resolves to: {resolved or 'nothing on PATH'}")
+    if uv:
+        report_command_conflicts(bin_dir)
 
 
 def main():
@@ -925,6 +1451,8 @@ def main():
     install_cadnano2(
         uv, args.python, args.system_certs, args.insecure, args.reinstall, args.upgrade
     )
+    patch_documentwindow(uv)
+    patch_launch_guard(uv)
 
     bin_dir = tool_bin_dir(uv)
     info("")
@@ -940,6 +1468,7 @@ def main():
 
     report_legacy_aliases()
     report_legacy_venv()
+    report_command_conflicts(bin_dir)
 
     info("")
     info("Done. Open a new terminal, then start cadnano2 by running:")
