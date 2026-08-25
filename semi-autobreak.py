@@ -17,12 +17,12 @@ def get_args():
     parser.add_argument('-optimal', '-opt', '-o', dest='optimal' , type=int, default=14, help='14 by default. Requirement of minimum continuous hybridization length per staple. Satisifying staples are colored blue')
     parser.add_argument('-acceptable', '-accept', '-a', dest='acceptable', type=int, default=12, help='12 by default. Loosen requirement of minimum continuous hybridization length per staple. Satisfying staples are colored cyan')
     parser.add_argument('-manual', '-m', dest='manual', action='store_true', help='Only staple color is updated and autobreak is skipped. The same behaviour as seeding-domain-tracer')
-    parser.add_argument('-connect', '-reconnect' '-c', dest='connect', action='store_true', help='Reconnect all break point of staples, by halting autobreak script')
-    parser.add_argument('-color', '-colour' '-intermediate' '-i', dest='color', action='store_true', help='Leave intermediate JSON file displaying autobroken staples in green')
+    parser.add_argument('-connect', '-reconnect', '-c', dest='connect', action='store_true', help='Reconnect all break point of staples, by halting autobreak script')
+    parser.add_argument('-color', '-colour', '-intermediate', '-i', dest='color', action='store_true', help='Leave intermediate JSON file displaying autobroken staples in green')
     parser.add_argument('-limit', '-threshold', '-t', dest='limit', type=int, default=5000, help='5000 by default. Limiter to prevent combinatorial explosion. The threshold to apply filter (below) breaking pattern variation. For low restriction designs (long average domain length), weight (**(optimal_seed_len/average_domain_len)) is automatically applied to reduce wasteful calculation cost, resulting in no siginficant differences')
     parser.add_argument('-resign', '-limit2', '-r', dest='resign', type=int, default=50000, help='50000 by default. Limiter to prevent combinatorial explosion, for the case no pattern found. The threshold to apply filter (below) breaking pattern variation. For low restriction designs (long average domain length), weight (**(optimal_seed_len/average_domain_len)) is automatically applied to reduce wasteful calculation cost, resulting in no siginficant differences')
     parser.add_argument('-filter', '-screen', '-f', dest='filter', type=int, default=100, help='100 by default. Filter to prevent combinatorial explosion. The pattern exceeding threshold (above) will be filtered to this number. For low restriction designs (long average domain length), weight (**(optimal_seed_len/average_domain_len)) is automatically applied to reduce wasteful calculation cost, resulting in no siginficant differences')
-    parser.add_argument('-distance', '-d', dest='distance', type=int, default=3, help='3 for honeycomb lattice or 4 for square lattice by default, apart from the case path panel width is multiple of 672, regarding it as honeycomb lattice. Distance from 5-/3-end of staple and staple crossover (not considering scaffold crossover)')   
+    parser.add_argument('-distance', '-d', dest='distance', type=int, default=None, help='Automatic by default: 3 for honeycomb lattice (path panel width multiple of 21) or 4 for square lattice, extended to 7 (honeycomb) or 8 (square) for single-layer designs. Any explicitly specified value is used as is. Distance from 5-/3-end of staple and staple crossover (not considering scaffold crossover)')
     parser.add_argument('-penalty', '-rate', '-p', dest='penalty', type=float, default=0.3, help='0.3 by default. Penalty for acceptable seed length vs optimal. The score of acceptable seed length is multiplied by this value.')
     parser.add_argument('-extension', '-ext', '-modification', '-mod', '-e', dest='extension', type=int, default=0, help='specified number will be added to the length of white strands during length evaluation, to be extended later manually.') 
     #     parser.add_argument('-evaluate', '-score', '-e', dest='staple_start', type=str, help='Evaluate the score of specific staple. The format is helix_num[pos_num], e.g. 0[0]')
@@ -59,10 +59,10 @@ if blueprint:
 
     print(f"The design is {'single' if single_array else 'multi'}-layer structure.")
 
-    if args.distance != 3:  # if distance is not default, it is set as user defined.
+    if args.distance is not None:  # if distance is given, it is set as user defined.
         distance = args.distance
     elif len(blueprint['vstrands'][0]['scaf']) % 21 == 0:
-        distance = args.distance + args.distance * single_array  # 3 for honeycomb lattice, 6 for single layer structure on honeycomb lattice.
+        distance = 3 + 4 * single_array  # 3 for honeycomb lattice, 7 for single layer structure on honeycomb lattice (7-base units remain in planar honeycomb, half of them being 14-base units).
     else:
         distance = 4 + 4 * single_array  # 4 for square lattice, 8 for single layer structure on square lattice.
 
