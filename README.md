@@ -3,9 +3,11 @@ This repository contains several microtools designed to enhance the functionalit
 
 ## Setup Script
 
-`setup.py` installs `cadnano2` and PyQt6 into an isolated environment managed by [uv](https://docs.astral.sh/uv/). uv supplies the Python interpreter as well, so pyenv, conda and Homebrew no longer interfere with the installation.
+The setup script installs `cadnano2` and PyQt6 into an isolated environment managed by [uv](https://docs.astral.sh/uv/). uv supplies the Python interpreter as well, so pyenv, conda and Homebrew no longer interfere with the installation.
 
-### Install
+There are two ways to run it. Start with the launcher (`install.bat` / `install.sh`); fall back to `python3 setup.py` only if the launcher does not work for you. Both routes run the same installer and accept the same [options](#options) — the launchers are thin wrappers that obtain uv and hand everything over to `setup.py`.
+
+### First choice: the launcher — nothing to install first, not even Python
 
 Download this repository, then, from the folder you downloaded:
 
@@ -17,9 +19,19 @@ Download this repository, then, from the folder you downloaded:
 $ sh install.sh
 ```
 
-Nothing has to be installed first, not even Python: the launcher installs uv, and uv provides both the Python that runs `setup.py` and the Python 3.12 that cadnano2 runs on. Re-running is safe — it repairs an existing installation rather than rebuilding it. [Options](#options) are passed through, so `sh install.sh --check` works.
+The launcher installs uv (announcing what it does beforehand), and uv provides both the Python that runs `setup.py` and the Python 3.12 that cadnano2 runs on. Re-running is safe — it repairs an existing installation rather than rebuilding it.
 
-`./install.sh` works too; `sh` is shown because the executable bit is lost if you save the file on its own from GitHub's file view, and `./` then fails with `permission denied`. If you already have a Python you are happy with, `python3 setup.py` is equivalent.
+`./install.sh` works too; `sh` is shown because the executable bit is lost if you save the file on its own from GitHub's file view, and `./` then fails with `permission denied`.
+
+### Second choice: setup.py — when the launcher does not work
+
+If the launcher fails on your system (for example, the uv installer download is blocked), install [Python](https://www.python.org/downloads/) 3.8 or newer yourself, then run the same installer directly from the downloaded folder:
+
+```bash
+$ python3 setup.py
+```
+
+On Windows, use `py setup.py` or `python setup.py` in a Command Prompt. This runs exactly what the launcher would have run.
 
 ### After installing
 
@@ -37,7 +49,13 @@ Or leave PATH alone and run `%USERPROFILE%\.local\bin\cadnano2.exe` directly.
 
 ### Options
 
-Accepted by `install.bat`, `install.sh` and `setup.py` alike.
+Every option below works identically with every entry point — append it to whichever command you used to install:
+
+```
+$ sh install.sh --check          (macOS and Linux)
+> install.bat --check            (Windows)
+$ python3 setup.py --check       (any platform, with your own Python)
+```
 
 | Option | Purpose |
 |---|---|
