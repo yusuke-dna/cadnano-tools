@@ -3,59 +3,41 @@ This repository contains several microtools designed to enhance the functionalit
 
 ## Setup Script
 
-The setup script installs `cadnano2` and PyQt6 into an isolated environment managed by [uv](https://docs.astral.sh/uv/). uv supplies the Python interpreter as well, so pyenv, conda and Homebrew no longer interfere with the installation.
+The setup script installs `cadnano2` and PyQt6 into an isolated environment managed by [uv](https://docs.astral.sh/uv/). uv also supplies the Python interpreter, so pyenv, conda and Homebrew do not interfere with the installation.
 
-There are two ways to run it. Start with the launcher (`install.bat` / `install.sh`); fall back to `python3 setup.py` only if the launcher does not work for you. Both routes run the same installer and accept the same [options](#options) — the launchers are thin wrappers that obtain uv and hand everything over to `setup.py`.
+### Install
 
-### First choice: the launcher — nothing to install first, not even Python
-
-Download this repository, then, from the folder you downloaded:
+Download this repository, then run the launcher in the downloaded folder. Python does not need to be installed beforehand.
 
 **Windows** — double-click `install.bat`, or run it in a Command Prompt.
 
-**macOS and Linux**
+**macOS / Linux**
 
 ```bash
 $ sh install.sh
 ```
 
-The launcher installs uv (announcing what it does beforehand), and uv provides both the Python that runs `setup.py` and the Python 3.12 that cadnano2 runs on. Re-running is safe — it repairs an existing installation rather than rebuilding it.
+The launcher installs uv, and uv supplies both the Python that runs `setup.py` and the Python 3.12 for cadnano2. Re-running is safe and repairs an existing installation.
 
-`./install.sh` works too; `sh` is shown because the executable bit is lost if you save the file on its own from GitHub's file view, and `./` then fails with `permission denied`.
+### If the launcher does not work
 
-### Second choice: setup.py — when the launcher does not work
-
-If the launcher fails on your system (for example, the uv installer download is blocked), install [Python](https://www.python.org/downloads/) 3.8 or newer yourself, then run the same installer directly from the downloaded folder:
+Install [Python](https://www.python.org/downloads/) 3.8 or newer, then run the same installer directly:
 
 ```bash
 $ python3 setup.py
 ```
 
-On Windows, use `py setup.py` or `python setup.py` in a Command Prompt. This runs exactly what the launcher would have run.
+(`py setup.py` on Windows.) It accepts the same [options](#options) as the launcher.
 
 ### After installing
 
-**Open a new terminal**, then type `cadnano2`. A new one is required, not optional: PATH is read once when a shell starts, so a window that was already open still reports that `cadnano2` is not found. `--check` shows how PATH is currently configured.
+Open a new terminal and type `cadnano2`. On Windows, use the desktop shortcut, or run `uv tool update-shell` once to enable the command line.
 
-**Windows.** The installer creates a desktop shortcut but deliberately does not change your PATH: it lives in the registry there, where an edit reaches every program your account starts. Use the shortcut, or enable the command line yourself and open a new Command Prompt:
-
-```
-uv tool update-shell
-```
-
-Or leave PATH alone and run `%USERPROFILE%\.local\bin\cadnano2.exe` directly.
-
-**Upgrading from an older version of this script.** It wrote an `alias cadnano2=...` into your shell configuration, and **an alias beats a command found on PATH** — until you delete that line yourself, the new installation will appear to have done nothing. `--check` reports the exact file and line number. The old environment at `~/venv/cn2` can be deleted once the new one works.
+**Upgrading from an older version of this script:** the old version wrote an `alias cadnano2=...` into your shell configuration, which shadows the new installation until you delete that line. `--check` reports the file and line number. The old environment at `~/venv/cn2` can be deleted once the new one works.
 
 ### Options
 
-Every option below works identically with every entry point — append it to whichever command you used to install:
-
-```
-$ sh install.sh --check          (macOS and Linux)
-> install.bat --check            (Windows)
-$ python3 setup.py --check       (any platform, with your own Python)
-```
+Accepted by `install.bat`, `install.sh` and `setup.py` alike, e.g. `sh install.sh --check`.
 
 | Option | Purpose |
 |---|---|
@@ -63,13 +45,11 @@ $ python3 setup.py --check       (any platform, with your own Python)
 | `--upgrade` | Upgrade an existing installation to the latest `cadnano2`. |
 | `--reinstall` | Rebuild the environment from scratch if it is broken. |
 | `--python VERSION` | Use a different Python version (default 3.12). |
-| `--system-certs` | Use the operating system's certificate store. |
+| `--system-certs` | Use the operating system's certificate store. Try this first if your institution intercepts TLS traffic. |
 | `--no-shortcut` | Skip creating the Windows desktop shortcut. |
 | `--allow-insecure-host` | Last resort if `--system-certs` is not enough. Skips certificate verification for pypi.org only. |
 | `--uninstall` | Remove cadnano2 and report anything left to clean up by hand. |
 | `--yes` | Answer yes to prompts, for unattended installation. |
-
-If your institution intercepts TLS traffic, try `--system-certs` first. The old `-unsafe` flag is deprecated: uv bundles its own TLS stack, so the broken-SSL builds it worked around no longer arise.
 
 ## Semi-Autobreak
 A Python script that supports users' semi-automatic optimisation of the breaking points of staples in DNA origami design. It removes existing staple breaks and introduces breaks with the following criteria if possible. If not possible, or if the user colour the staple in white (#FFFFFF), the strand is left intact. Users will attempt to rearrange the crossover position referring to the generated reports and repeatedly run the script to turn all strands blue (or cyan). Merged with `Seeding Domain Tracer` on 19th Sept 2023.
