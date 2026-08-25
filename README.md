@@ -46,6 +46,7 @@ Accepted by `install.bat`, `install.sh` and `setup.py` alike.
 | `--reinstall` | Rebuild the environment from scratch if it is broken. |
 | `--python VERSION` | Use a different Python version (default 3.12). |
 | `--system-certs` | Use the operating system's certificate store. |
+| `--no-shortcut` | Skip creating the Windows desktop shortcut. |
 | `--allow-insecure-host` | Last resort if `--system-certs` is not enough. Skips certificate verification for pypi.org only. |
 | `--uninstall` | Remove cadnano2 and report anything left to clean up by hand. |
 | `--yes` | Answer yes to prompts, for unattended installation. |
@@ -57,10 +58,10 @@ A Python script that supports users' semi-automatic optimisation of the breaking
 
 ### Criteria
 - All staples should have a seeding domain, continuous hybridisation to the scaffold without staple/scaffold crossover, ≥ 12 nt or, preferably, ≥ 14 nt. (configurable by optional arguments `-acceptable` and `-optimal`)
-- All ends of staples are at least three base away from staple crossover. (configurable by optional arguments `-distance`)
+- All ends of staples are kept away from staple crossovers by a lattice-dependent distance: 3 bases for honeycomb lattice (7-base units) or 4 for square lattice (8-base units). Single-layer designs have no vertical crossovers, so the distance is extended to 7 for honeycomb (7-base units remain in planar honeycomb, half of them being 14-base units) and 8 for square. (configurable by optional arguments `-distance`)
 - The length of all split staples should be within the specified range, ≥ 18 and ≤ 80 by default. (configurable by optional arguments `-min` and `-max`)
 - The most preferable breaking point is selected from all possible combinations based on its `score`. The score represents the quality of split staples. A shorter staple is preferable (minimum length staple has twice the score as maximum length staple), a higher split number is preferable (score is the sum of individual split staple scores), and a seeding domain above 13 is more preferable than one above 11 (1:0.3).
-- Calculation is limited up to 5 000 patterns per cycle. If exceed, top 100 (by score) patterns are filtered to next breaking point search. (configurable by optional arguments `-limit` and `-filter`) Note that a weight is applied to both to reduce calculation cost for staples with low sequence divesity.
+- Calculation is limited up to 5 000 patterns per cycle. If exceed, top 100 (by score) patterns are filtered to next breaking point search. (configurable by optional arguments `-limit` and `-filter`) While no candidate pattern has been found yet, this pruning is postponed up to a larger fallback threshold (50 000 by default, configurable by `-resign`) to avoid settling on a local optimum too early. Note that a weight is applied to all of them to reduce calculation cost for staples with low sequence divesity.
   
 _See the reference at the bottom for the theoretical/experimental background about `seeding domain`._
 
@@ -80,7 +81,7 @@ To use Semi-Autobreak, navigate to the directory containing the script and run t
 $ python3 semi-autobreak.py file/path/to/json/file.json
 ```
 
-The script will generate several output files: `output.json`, `crossover_report.csv`, `domain_report.csv`, and optionally `output_connected.json`, `output_autobreak.json`, `crossover_report_connected.csv`, `domain_report_connected.csv`.
+The script will generate several output files: `output.json`, `crossover_report.csv`, `domain_report.csv`, and optionally `output_autoconnect.json`, `output_autobreak.json`, `crossover_report_autoconnect.csv`, `domain_report_autoconnect.csv`.
 - The `output.json` file is compatible with cadnano2. Open the file with cadnano2 as usual. Colour codes are written above.
 - `crossover_report.csv` summarises the crossover frequency of every adjacent helix pair (by num in slice panel), in ascending order of the central helix number. So, e.g. 0-1 and 1-0 appear twice. From left to right: helix pair number, total count of crossover, crossover count by scaffold, crossover count by staple, filled length of the focused helix, count of short domains of invalid (neither blue nor cyan) strands.
 - `domain_report.csv` lists the staples to display domain properties. In this list, the first and the second column shows the locations of the 5' end and 3' end of the strand, similarly to the staple export file of cadnano2. In the third column, the domain structure is printed as follows: `a-z` represents continuous base pairings with incremental domain naming. If the domain length is or is above 12 nt (or user-specified `acceptable` length), the domain is shown by the upper letter `A-Z`; `^` indicates a base not hybridised to the scaffold (ssDNA), and `!` is an error catcher for situations like the presence of more than 1300 domains in a single staple. Note that the domain label circulates between a-z (a is next to z). Length of each staple is provided in the last column for reference.
@@ -92,11 +93,13 @@ The script will generate several output files: `output.json`, `crossover_report.
 - `-optimal [number]`: 14 by default. Requirement for minimum continuous hybridisation length per staple. Staples meeting this requirement are coloured blue.
 - `-acceptable [number]`: 12 by default. A more lenient requirement for minimum continuous hybridisation length per staple. Staples that meet this requirement are coloured cyan.
 - `-manual`: Only the staple colour is updated and autobreak is skipped. This behaviour is the same as the seeding-domain-tracer.
-- `-connect`: Reconnect all breakpoints of staples, by halting the autobreak script. Generated file: `output_connected.json`, `crossover_report_connected.csv`, `domain_report_connected.csv`.
+- `-connect`: Reconnect all breakpoints of staples, by halting the autobreak script. Generated file: `output_autoconnect.json`, `crossover_report_autoconnect.csv`, `domain_report_autoconnect.csv`.
 - `-color`: Retain an intermediate JSON file `output_autobreak.json` displaying autobroken staples in green.
 - `-limit [number]`: 5000 by default. Limiter to prevent combinatorial explosion. The threshold to apply pruning filter (below) breaking pattern variation. For low restriction design (long average domain length), weight (**(optimal_seed_len/average_domain_len)) is automatically applied to reduce wasteful calculation cost, resulting in no siginficant difference.
 - `-filter [number]`: 100 by default. Filter to prevent combinatorial explosion. The pattern exceeding threshold (above) will be pruned to this number. For low restriction design (long average domain length), weight (**(optimal_seed_len/average_domain_len)) is automatically applied to reduce wasteful calculation cost, resulting in no siginficant difference.
-- `-distance [number]`: 3 by default. Distance from 5-/3-end of staple and staple crossover (not considering scaffold crossover).
+- `-distance [number]`: Automatic by default: 3 for honeycomb lattice or 4 for square lattice, extended to 7 (honeycomb) or 8 (square) for single-layer designs. The design is regarded as honeycomb lattice when the path panel width is a multiple of 21. Any explicitly specified value is used as is, overriding the automatic adjustment. Distance from 5-/3-end of staple and staple crossover (not considering scaffold crossover).
+- `-resign [number]`: 50000 by default. Fallback limiter for the case no breaking pattern has been found yet: the normal `-limit` pruning is postponed until enough candidate patterns exist, and this larger threshold forces pruning anyway if the search grows too large before then. The same automatic weight as `-limit` is applied for low restriction designs.
+- `-penalty [number]`: 0.3 by default. Penalty for acceptable seed length vs optimal. The score of a staple whose seeding domain only reaches the acceptable length is multiplied by this value.
 - `-extension [number]`: 0 by default. Specified number of ssDNA (^) is added to the white staples. This is useful to introduce modifications to the DNA nanostructure.
 
 ### Staple Optimisation Workflow Semi-Autobreak
@@ -151,7 +154,7 @@ To use the Simple Slider, navigate to the directory containing the script, and r
 ```   
 $ python3 simple-slider.py file/path/to/json/file.json [sliding number]
 ```
-Both file path and number are required. The sliding number should be multiple of 32 (square lattice) or 21 (honeycomb lattice).
+Both file path and number are required. The sliding number should be multiple of 32 (square lattice) or 21 (honeycomb lattice). Passing `0` slides right automatically by one lattice period: 21 if the path panel width is a multiple of 21, otherwise 32.
 
 ## Color Resetter
 
@@ -164,6 +167,15 @@ To use the Color Resetter, navigate to the directory containing the script, and 
 $ python3 color-resetter.py file/path/to/json/file.json
 ```
 It generate output.json file which the staple colours are updated.
+
+Instead of randomising every colour, a specific colour can be replaced by passing both options:
+```
+$ python3 color-resetter.py file/path/to/json/file.json -target "#1700DE" -new "#FFFFFF"
+```
+- `-target [hex colour]`: The colour to change from.
+- `-new [hex colour]`: The colour to change to. Staples in other colours are left untouched. `-target` and `-new` must be specified together.
+
+`color-setter.py` is a deprecated alias kept for backward compatibility; it simply runs `color-resetter.py` with the same arguments.
 
 ## Horizontal Rotator
 
