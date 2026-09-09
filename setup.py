@@ -63,8 +63,11 @@ LEGACY_RC_FILES = (
     Path(".config") / "fish" / "config.fish",
 )
 
-# Matches `alias cadnano2=...` (sh/bash/zsh/fish) and `alias cadnano2 ...` (csh).
-LEGACY_ALIAS_RE = re.compile(r"^\s*alias\s+cadnano2\b\s*=?", re.IGNORECASE)
+# Matches `alias cadnano2=...` (sh/bash/zsh/fish) and `alias cadnano2 ...`
+# (csh/fish), but only for an alias named exactly cadnano2: a renamed alias
+# such as cadnano2-old no longer shadows the command and is a legitimate way
+# to keep the old environment reachable, so it must not trip the warning.
+LEGACY_ALIAS_RE = re.compile(r"^\s*alias\s+cadnano2(?:\s*=|\s+\S)", re.IGNORECASE)
 
 TLS_ERROR_HINTS = (
     "certificate",
@@ -821,25 +824,73 @@ def find_legacy_aliases():
 
 
 def report_legacy_aliases():
-    """A leftover alias shadows the new command, so this warning leads the report."""
+    """A leftover alias shadows the new command, so this warning leads the report.
+
+    The banner walks the user through the fix itself -- open the named file,
+    delete the one line, re-run and watch the warning disappear -- rather
+    than leaving them alone with a diagnosis.
+    """
     hits = find_legacy_aliases()
     if not hits:
         return 0
 
+    # The example command must open an editor the platform actually ships:
+    # TextEdit on macOS needs no editor knowledge at all, nano covers the
+    # mainstream Linux distributions, notepad covers a stray rc on Windows.
+    if sys.platform == "darwin":
+        editor = "open -e"
+    elif os.name == "nt":
+        editor = "notepad"
+    else:
+        editor = "nano"
+
     info("")
     info("=" * 72)
-    warn(f"ACTION REQUIRED: {len(hits)} old alias(es) are shadowing the new {COMMAND}.")
+    if JAPANESE_UI:
+        warn(f"古いエイリアスが設定されているため、新しい {COMMAND} が起動しません。")
+    else:
+        warn(f"An old alias is set, so the new {COMMAND} does not start.")
     info("=" * 72)
     for path, number, line in hits:
-        info(f"    {path}:{number}")
+        if JAPANESE_UI:
+            info(f"    {path} ({number}行目):")
+        else:
+            info(f"    {path} (line {number}):")
         info(f"        {line}")
     info("")
-    info("An alias always wins over a command found on PATH. Until you delete the")
-    info(f"lines above, typing `{COMMAND}` will keep launching the old environment")
-    info("and this migration will appear to have done nothing.")
-    info("")
-    info("Remove those lines in your editor, then open a new terminal.")
-    info("This script does not edit your shell configuration files.")
+    # One editor command per affected file, so nothing is fixed halfway when
+    # aliases sit in several rc files at once.
+    unique_paths = list(dict.fromkeys(path for path, _, _ in hits))
+    if JAPANESE_UI:
+        info("エイリアスは PATH 上のコマンドより優先されるため、削除が必要です。")
+        info("")
+        info("【対処方法】")
+        if len(unique_paths) == 1:
+            info(f"  1. 設定ファイルを開く:  {editor} {unique_paths[0]}")
+        else:
+            info("  1. 設定ファイルを開く:")
+            for path in unique_paths:
+                info(f"        {editor} {path}")
+        info("  2. 上記のエイリアス行を削除して保存する。")
+        info("  3. 新しいターミナルを開き、インストーラーを再実行する。")
+        info("     (警告が出なくなれば設定完了です)")
+        info("")
+        info("※ このスクリプトが既存の設定行を書き換え・削除することはありません。")
+    else:
+        info("An alias takes priority over commands on PATH, so it must be removed.")
+        info("")
+        info("How to fix:")
+        if len(unique_paths) == 1:
+            info(f"  1. Open the settings file:  {editor} {unique_paths[0]}")
+        else:
+            info("  1. Open the settings files:")
+            for path in unique_paths:
+                info(f"        {editor} {path}")
+        info("  2. Delete the alias line shown above and save.")
+        info("  3. Open a new terminal and run the installer again.")
+        info("     (When this warning no longer appears, setup is complete.)")
+        info("")
+        info("Note: this script never rewrites or deletes existing configuration lines.")
     info("=" * 72)
     return len(hits)
 
